@@ -5,3 +5,6 @@
 tags
 node_modules
 __pycache__
+
+todo/public/frontend/
+todo/www/todo.html

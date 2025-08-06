@@ -1,0 +1,63 @@
+import React from 'react';
+import { useProjectData } from '../hooks/useProjectData';
+import { ProjectFilter } from './ProjectFilter';
+import { ProjectOverview } from './ProjectOverview';
+import { TaskManagement } from './TaskManagement';
+import { TimeTracking } from './TimeTracking';
+import { CostAnalysis } from './CostAnalysis';
+import { LoadingSpinner } from './LoadingSpinner';
+
+export const Dashboard: React.FC = () => {
+  const { 
+    allProjects, 
+    filteredData, 
+    selectedProject, 
+    setSelectedProject, 
+    isLoading 
+  } = useProjectData();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner className="h-12 w-12 mx-auto mb-4" />
+          <p className="text-gray-600">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
+      <div className="max-w-7xl mx-auto p-8">
+        <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center">
+          Bảng điều khiển quản lý dự án
+        </h1>
+
+        <ProjectFilter
+          projects={allProjects}
+          selectedProject={selectedProject}
+          onProjectChange={setSelectedProject}
+        />
+
+        <ProjectOverview
+          projects={filteredData.filteredProjects}
+          selectedProject={selectedProject}
+        />
+
+        <TaskManagement
+          projects={filteredData.filteredProjects}
+          tasks={filteredData.filteredTasks}
+        />
+
+        <TimeTracking
+          timesheets={filteredData.filteredTimesheets}
+        />
+
+        <CostAnalysis
+          projects={filteredData.filteredProjects}
+        />
+      </div>
+    </div>
+  );
+};
