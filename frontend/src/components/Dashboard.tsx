@@ -6,7 +6,14 @@ import { TaskManagement } from './TaskManagement';
 import { TimeTracking } from './TimeTracking';
 import { CostAnalysis } from './CostAnalysis';
 import { LoadingSpinner } from './LoadingSpinner';
-
+import { useFrappeGetDocList } from 'frappe-react-sdk';
+interface Task {
+  name: string;
+  subject: string;
+  status: string;
+  project: string;
+  priority: string;
+}
 export const Dashboard: React.FC = () => {
   const { 
     allProjects, 
@@ -15,6 +22,16 @@ export const Dashboard: React.FC = () => {
     setSelectedProject, 
     isLoading 
   } = useProjectData();
+  const { data } = useFrappeGetDocList<Task>('Task', {
+    fields: ['name', 'subject', 'status', 'project', 'priority'],
+    limit: 20,
+    orderBy: {
+      field: 'creation',
+      order: 'desc',
+    },
+    filters: [['status', '!=', 'Completed']], // ví dụ lọc task chưa hoàn thành
+  });
+  console.log(data?.map(task => (task.project)));
 
   if (isLoading) {
     return (
@@ -26,6 +43,7 @@ export const Dashboard: React.FC = () => {
       </div>
     );
   }
+  
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
@@ -50,13 +68,13 @@ export const Dashboard: React.FC = () => {
           tasks={filteredData.filteredTasks}
         />
 
-        <TimeTracking
+        {/* <TimeTracking
           timesheets={filteredData.filteredTimesheets}
         />
 
         <CostAnalysis
           projects={filteredData.filteredProjects}
-        />
+        /> */}
       </div>
     </div>
   );
