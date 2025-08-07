@@ -35,7 +35,7 @@ export const Dashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <LoadingSpinner className="h-12 w-12 mx-auto mb-4" />
           <p className="text-gray-600">Đang tải dữ liệu...</p>
@@ -46,8 +46,8 @@ export const Dashboard: React.FC = () => {
   
 
   return (
-    <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
-      <div className="max-w-7xl mx-auto p-8">
+    <div className="space-y-6">
+      <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center">
           Bảng điều khiển quản lý dự án
         </h1>
