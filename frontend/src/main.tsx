@@ -7,7 +7,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { Dashboard } from './components/Dashboard'
-import { ProjectsPage } from './pages/ProjectsPage'
+import { ProjectsPage } from './pages/projects-page/ProjectsPage.tsx'
 import { TasksPage } from './pages/TasksPage'
 import { TimeTrackingPage } from './pages/TimeTrackingPage'
 import { SimplePage } from './pages/SimplePage'
