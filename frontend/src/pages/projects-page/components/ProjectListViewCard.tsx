@@ -1,6 +1,7 @@
 import type { Project } from '@/types/Projects/Project';
 import { formatCurrency } from '@/utils/formatCurrency';
-import React from 'react';
+import React, { useState } from 'react';
+import { DetailProject } from './DetailProject';
 
 
 interface ProjectListViewCardProps {
@@ -8,6 +9,19 @@ interface ProjectListViewCardProps {
 }
 
 const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) => {
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const handleProjectClick = (project: Project) => {
+    setSelectedProject(project);
+    setIsDrawerOpen(true);
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setSelectedProject(null);
+  };
+
   const getStatusColor = (status?: "Open" | "Completed" | "Cancelled") => {
     switch (status) {
       case 'Open':
@@ -56,7 +70,11 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) =
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {projects.map((project) => (
-              <tr key={project.name} className="hover:bg-gray-50">
+              <tr 
+                key={project.name} 
+                className="hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => handleProjectClick(project)}
+              >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="h-10 w-10 flex-shrink-0">
@@ -106,6 +124,13 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) =
           </tbody>
         </table>
       </div>
+      
+      {/* DetailProject Drawer */}
+      <DetailProject 
+        project={selectedProject}
+        isOpen={isDrawerOpen}
+        onClose={handleCloseDrawer}
+      />
     </div>
   );
 };
