@@ -12,14 +12,4 @@ export interface ProjectPhaseTask{
 	idx?: number
 	/**	Task : Link - Task	*/
 	task?: string
-	/**	Subject : Data	*/
-	subject?: string
-	/**	Status : Select	*/
-	status?: "Open" | "Working" | "Completed"
-	/**	Progress : Percent	*/
-	progress?: number
-	/**	Start Date : Date	*/
-	start_date?: string
-	/**	End Date : Date	*/
-	end_date?: string
 }

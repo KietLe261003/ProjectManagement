@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "PHASE-.#####",
  "creation": "2025-08-12 14:37:43.571005",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -15,7 +16,6 @@
   "details",
   "costing",
   "project",
-  "tasks_section",
   "tasks"
  ],
  "fields": [
@@ -74,11 +74,6 @@
    "options": "Project"
   },
   {
-   "fieldname": "tasks_section",
-   "fieldtype": "Section Break",
-   "label": "Tasks"
-  },
-  {
    "fieldname": "tasks",
    "fieldtype": "Table",
    "label": "Tasks",
@@ -88,10 +83,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-12 14:41:21.209828",
+ "modified": "2025-08-13 13:48:45.332541",
  "modified_by": "Administrator",
  "module": "Todo",
  "name": "project_phase",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {

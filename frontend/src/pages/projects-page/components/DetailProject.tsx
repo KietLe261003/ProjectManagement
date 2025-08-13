@@ -14,6 +14,9 @@ import {
 import type { Project } from '@/types/Projects/Project'
 import { formatCurrency } from '@/utils/formatCurrency'
 import { ProjectTaskManagement } from './ProjectTaskManagement'
+import { PhaseDetails } from './PhaseDetails'
+import { TaskDetails } from './TaskDetails'
+import { SubTaskDetails } from './SubTaskDetails'
 
 interface DetailProjectProps {
   project: Project | null
@@ -22,7 +25,10 @@ interface DetailProjectProps {
 }
 
 export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'tasks'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'phase-details' | 'task-details' | 'subtask-details'>('overview');
+  const [selectedPhase, setSelectedPhase] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedSubTask, setSelectedSubTask] = useState<any>(null);
   
   const getStatusColor = (status?: "Open" | "Completed" | "Cancelled") => {
     switch (status) {
@@ -95,6 +101,81 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
               >
                 Tasks & Phases
               </button>
+              {selectedPhase && (
+                <button
+                  onClick={() => setActiveTab('phase-details')}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                    activeTab === 'phase-details'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  📋 {selectedPhase.subject}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhase(null);
+                      setActiveTab('tasks');
+                    }}
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    title="Close phase details"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </button>
+              )}
+              {selectedTask && (
+                <button
+                  onClick={() => setActiveTab('task-details')}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                    activeTab === 'task-details'
+                      ? 'border-orange-600 text-orange-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  📝 {selectedTask.subject || selectedTask.name}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTask(null);
+                      setActiveTab('tasks');
+                    }}
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    title="Close task details"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </button>
+              )}
+              {selectedSubTask && (
+                <button
+                  onClick={() => setActiveTab('subtask-details')}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                    activeTab === 'subtask-details'
+                      ? 'border-purple-600 text-purple-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  📌 {selectedSubTask.subject || selectedSubTask.name}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSubTask(null);
+                      setActiveTab('tasks');
+                    }}
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    title="Close subtask details"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </button>
+              )}
             </div>
           </DrawerHeader>
           
@@ -208,7 +289,59 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
 
             {activeTab === 'tasks' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
-                <ProjectTaskManagement projectName={project.name} />
+                <ProjectTaskManagement 
+                  projectName={project.name} 
+                  onViewPhaseDetails={(phase) => {
+                    setSelectedPhase(phase);
+                    setActiveTab('phase-details');
+                  }}
+                  onViewTaskDetails={(task) => {
+                    setSelectedTask(task);
+                    setActiveTab('task-details');
+                  }}
+                  onViewSubTaskDetails={(subtask) => {
+                    setSelectedSubTask(subtask);
+                    setActiveTab('subtask-details');
+                  }}
+                />
+              </div>
+            )}
+
+            {activeTab === 'phase-details' && selectedPhase && (
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <PhaseDetails 
+                  phase={selectedPhase} 
+                  projectName={project.name}
+                  onBack={() => setActiveTab('tasks')}
+                  onViewTaskDetails={(task) => {
+                    setSelectedTask(task);
+                    setActiveTab('task-details');
+                  }}
+                />
+              </div>
+            )}
+
+            {activeTab === 'task-details' && selectedTask && (
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <TaskDetails 
+                  task={selectedTask} 
+                  projectName={project.name}
+                  onBack={() => setActiveTab('tasks')}
+                  onViewSubTaskDetails={(subtask) => {
+                    setSelectedSubTask(subtask);
+                    setActiveTab('subtask-details');
+                  }}
+                />
+              </div>
+            )}
+
+            {activeTab === 'subtask-details' && selectedSubTask && (
+              <div className="bg-white border border-gray-200 rounded-xl p-6">
+                <SubTaskDetails 
+                  subtask={selectedSubTask} 
+                  projectName={project.name}
+                  onBack={() => setActiveTab('tasks')}
+                />
               </div>
             )}
           </div>

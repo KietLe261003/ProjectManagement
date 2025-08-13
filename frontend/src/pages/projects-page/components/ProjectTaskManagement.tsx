@@ -1,36 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { CheckCircle2, Circle, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateProjectPhase } from './CreateProjectPhase';
-import type { project_phase } from '@/types/Todo/project_phase';
+import { CreateTask } from './CreateTask';
+import { CreateSubTask } from './CreateSubTask';
 import type { SubTask } from '@/types/Todo/SubTask';
 
 interface ProjectTaskManagementProps {
   projectName: string;
+  onViewPhaseDetails?: (phase: any) => void;
+  onViewTaskDetails?: (task: any) => void;
+  onViewSubTaskDetails?: (subtask: any) => void;
 }
 
-export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ projectName }) => {
+export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ 
+  projectName, 
+  onViewPhaseDetails,
+  onViewTaskDetails,
+  onViewSubTaskDetails
+}) => {
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [isCreatePhaseModalOpen, setIsCreatePhaseModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [isCreateSubTaskModalOpen, setIsCreateSubTaskModalOpen] = useState(false);
+  const [phasesWithTasks, setPhasesWithTasks] = useState<any[]>([]);
 
-  // Fetch project phases
-  const { data: phases, isLoading: phasesLoading, mutate: mutatePhases } = useFrappeGetDocList('project_phase', {
-    fields: ['name', 'subject', 'status', 'priority', 'start_date', 'end_date', 'progress', 'details', 'costing', 'tasks'],
+  // Fetch project phases list first
+  const { data: phasesList, isLoading: phasesLoading, mutate: mutatePhases } = useFrappeGetDocList('project_phase', {
+    fields: ['name', 'subject', 'status', 'priority', 'start_date', 'end_date', 'progress', 'details', 'costing'],
     filters: [['project', '=', projectName]],
     orderBy: { field: 'start_date', order: 'asc' }
   });
 
+  // Fetch individual phase documents to get child table data
+  useEffect(() => {
+    if (phasesList && phasesList.length > 0) {
+      const fetchPhasesWithTasks = async () => {
+        const results = [];
+        for (const phase of phasesList) {
+          try {
+            // Use frappe.client.get to get full document with child tables
+            const response = await fetch(`/api/resource/project_phase/${phase.name}`, {
+              headers: {
+                'Accept': 'application/json',
+              }
+            });
+            
+            if (response.ok) {
+              const phaseDoc = await response.json();
+              results.push(phaseDoc.data);
+            } else {
+              console.warn('Failed to fetch phase:', phase.name);
+              // Fallback to the basic phase data
+              results.push(phase);
+            }
+          } catch (error) {
+            console.error('Error fetching phase:', phase.name, error);
+            // Fallback to the basic phase data
+            results.push(phase);
+          }
+        }
+        setPhasesWithTasks(results);
+      };
+      
+      fetchPhasesWithTasks();
+    }
+  }, [phasesList]);
+
+  console.log('Phases List:', phasesList);
+  console.log('Phases With Tasks:', phasesWithTasks);
+
   // Fetch all tasks for this project
-  const { data: tasks, isLoading: tasksLoading } = useFrappeGetDocList('Task', {
+  const { data: tasks, isLoading: tasksLoading, mutate: mutateTasks } = useFrappeGetDocList('Task', {
     fields: ['name', 'subject', 'status', 'priority', 'project', 'exp_start_date', 'exp_end_date', 'progress'],
     filters: [['project', '=', projectName]],
     orderBy: { field: 'exp_start_date', order: 'asc' }
   });
 
   // Fetch all subtasks for this project
-  const { data: subtasks, isLoading: subtasksLoading } = useFrappeGetDocList('SubTask', {
+  const { data: subtasks, isLoading: subtasksLoading, mutate: mutateSubtasks } = useFrappeGetDocList('SubTask', {
     fields: ['name', 'subject', 'task', 'status', 'progress', 'start_date', 'end_date', 'description'],
     orderBy: { field: 'start_date', order: 'asc' }
   });
@@ -103,16 +153,31 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
     
     let icon = '';
     let iconClass = 'mr-3 text-lg';
+    let prefixIcon = '';
     
-    if (type === 'phase' || (type === 'task' && hasChildren)) {
+    // Add prefix icons to distinguish phases from tasks
+    if (type === 'phase') {
+      prefixIcon = '📋';
+    } else if (type === 'task') {
+      prefixIcon = '📝';
+    } else if (type === 'phase-task') {
+      prefixIcon = '📄';
+    } else if (type === 'subtask') {
+      prefixIcon = '📌';
+    }
+    
+    if (type === 'phase' || (type === 'task' && hasChildren) || (type === 'phase-task' && hasChildren)) {
       icon = isExpanded ? '▼' : '▶️';
       iconClass += ' text-blue-600 cursor-pointer hover:text-blue-800 transition-colors';
     } else if (type === 'phase-task') {
       icon = '•';
-      iconClass += ' text-gray-400';
+      iconClass += ' text-green-500';
     } else if (type === 'subtask') {
       icon = '◦';
       iconClass += ' text-gray-400';
+    } else if (type === 'task') {
+      icon = '●';
+      iconClass += ' text-orange-500';
     } else {
       icon = '●';
       iconClass += ' text-gray-400';
@@ -146,9 +211,10 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
             >
               {icon}
             </span>
+            <span className="mr-2 text-lg">{prefixIcon}</span>
             {getStatusIcon(status)}
             <div className="ml-3 flex-1">
-              <div className={`font-medium ${type === 'phase' ? 'text-blue-900 text-lg' : type === 'task' ? 'text-gray-900' : 'text-gray-700'}`}>
+              <div className={`font-medium ${type === 'phase' ? 'text-blue-900 text-lg' : type === 'task' ? 'text-orange-900' : type === 'phase-task' ? 'text-green-900' : 'text-gray-700'}`}>
                 {displayName}
               </div>
               {item.description && type === 'subtask' && (
@@ -180,11 +246,58 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
           <div className="col-span-2 flex items-center justify-center space-x-2">
             <div className={`${type === 'phase' ? 'w-20' : 'w-16'} bg-gray-200 rounded-full h-2`}>
               <div
-                className={`${type === 'phase' ? 'bg-blue-600' : type === 'task' ? 'bg-green-600' : 'bg-purple-600'} h-2 rounded-full transition-all duration-300`}
+                className={`${
+                  type === 'phase' ? 'bg-blue-600' : 
+                  type === 'task' ? 'bg-orange-600' : 
+                  type === 'phase-task' ? 'bg-green-600' : 
+                  'bg-purple-600'
+                } h-2 rounded-full transition-all duration-300`}
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
             <span className="text-sm text-gray-600 w-8 text-right">{progress}%</span>
+            {type === 'phase' && onViewPhaseDetails && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onViewPhaseDetails(item);
+                }}
+                className="ml-2 h-7 px-2 text-xs"
+              >
+                View Details
+              </Button>
+            )}
+            {(type === 'task' || type === 'phase-task') && onViewTaskDetails && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onViewTaskDetails(item);
+                }}
+                className="ml-2 h-7 px-2 text-xs"
+              >
+                View Details
+              </Button>
+            )}
+            {type === 'subtask' && onViewSubTaskDetails && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onViewSubTaskDetails(item);
+                }}
+                className="ml-2 h-7 px-2 text-xs"
+              >
+                View Details
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -201,7 +314,7 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
     );
   }
 
-  const projectPhases = phases as project_phase[] || [];
+  const projectPhases = phasesWithTasks.length > 0 ? phasesWithTasks : phasesList || [];
   const projectTasks = tasks as any[] || [];
   const projectSubtasks = subtasks as SubTask[] || [];
 
@@ -226,14 +339,34 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold text-gray-900">Project Tasks & Phases</h3>
-        <Button 
-          size="sm" 
-          className="flex items-center gap-2"
-          onClick={() => setIsCreatePhaseModalOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Add Phase
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => setIsCreateSubTaskModalOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Add SubTask
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => setIsCreateTaskModalOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Add Task
+          </Button>
+          <Button 
+            size="sm" 
+            className="flex items-center gap-2"
+            onClick={() => setIsCreatePhaseModalOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Add Phase
+          </Button>
+        </div>
       </div>
 
       {/* Task Tree */}
@@ -248,9 +381,10 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
 
         <div className="divide-y divide-gray-100">
           {/* Phases */}
-          {projectPhases.map((phase) => {
+          {projectPhases.map((phase: any) => {
             const isPhaseExpanded = expandedPhases.has(phase.name);
-            const phaseTasks = phase.tasks || [];
+            // Get tasks from the phase's tasks child table
+            const phaseTaskList = phase.tasks || [];
 
             return (
               <div key={phase.name}>
@@ -259,37 +393,119 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
                   phase,
                   0,
                   'phase',
-                  phaseTasks.length > 0,
+                  phaseTaskList.length > 0,
                   isPhaseExpanded,
                   () => {
-                    console.log('Phase toggle clicked:', phase.name);
+                    console.log('Phase toggle clicked:', phase.name, 'Tasks:', phaseTaskList.length, 'Tasks data:', phaseTaskList);
                     togglePhase(phase.name);
                   }
                 )}
 
                 {/* Phase Tasks */}
-                {isPhaseExpanded && phaseTasks.map((phaseTask) => (
-                  renderTaskItem(
-                    phaseTask,
-                    1,
-                    'phase-task',
-                    false,
-                    false
-                  )
-                ))}
+                {isPhaseExpanded && phaseTaskList.map((phaseTask: any, index: number) => {
+                  // Find the actual task data
+                  const taskData = projectTasks.find((t: any) => t.name === phaseTask.task);
+                  const taskSubtasks = getTaskSubtasks(phaseTask.task);
+                  const hasSubtasks = taskSubtasks.length > 0;
+                  const isTaskExpanded = expandedTasks.has(phaseTask.task);
+                  
+                  if (!taskData) {
+                    // If task data not found, create a minimal display object
+                    const minimalTask = { name: phaseTask.task, subject: phaseTask.task, status: 'Open' };
+                    
+                    return (
+                      <div key={`phase-task-${index}`}>
+                        {renderTaskItem(
+                          minimalTask,
+                          1,
+                          'phase-task',
+                          hasSubtasks,
+                          isTaskExpanded,
+                          hasSubtasks ? () => {
+                            console.log('Phase task toggle clicked:', phaseTask.task, 'Subtasks:', taskSubtasks.length);
+                            toggleTask(phaseTask.task);
+                          } : undefined
+                        )}
+                        
+                        {/* Subtasks for this phase task */}
+                        {isTaskExpanded && hasSubtasks && taskSubtasks.map((subtask: any, subIndex: number) => (
+                          <div key={`subtask-${subIndex}`}>
+                            {renderTaskItem(
+                              subtask,
+                              2,
+                              'subtask',
+                              false,
+                              false
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <div key={`phase-task-${index}`}>
+                      {renderTaskItem(
+                        taskData,
+                        1,
+                        'phase-task',
+                        hasSubtasks,
+                        isTaskExpanded,
+                        hasSubtasks ? () => {
+                          console.log('Phase task toggle clicked:', taskData.name, 'Subtasks:', taskSubtasks.length);
+                          toggleTask(taskData.name);
+                        } : undefined
+                      )}
+                      
+                      {/* Subtasks for this phase task */}
+                      {isTaskExpanded && hasSubtasks && taskSubtasks.map((subtask: any, subIndex: number) => (
+                        <div key={`subtask-${subIndex}`}>
+                          {renderTaskItem(
+                            subtask,
+                            2,
+                            'subtask',
+                            false,
+                            false
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
 
-          {/* Standalone Project Tasks */}
-          {projectTasks.map((task) => {
+          {/* Separator if there are both phases and standalone tasks */}
+          {projectPhases.length > 0 && projectTasks.filter((task: any) => {
+            const isInPhase = projectPhases.some((phase: any) => 
+              phase.tasks?.some((phaseTask: any) => phaseTask.task === task.name)
+            );
+            return !isInPhase;
+          }).length > 0 && (
+            <div className="bg-gray-100 px-6 py-2 border-b border-gray-200">
+              <div className="text-sm font-medium text-gray-600 flex items-center">
+                <span className="mr-2">📝</span>
+                Standalone Tasks
+              </div>
+            </div>
+          )}
+
+          {/* Standalone Project Tasks (not in any phase) */}
+          {projectTasks.filter((task: any) => {
+            // Filter out tasks that are already in phases
+            const isInPhase = projectPhases.some((phase: any) => 
+              phase.tasks?.some((phaseTask: any) => phaseTask.task === task.name)
+            );
+            return !isInPhase;
+          }).map((task: any) => {
             const isTaskExpanded = expandedTasks.has(task.name);
             const taskSubtasks = getTaskSubtasks(task.name);
             const hasSubtasks = taskSubtasks.length > 0;
 
             return (
               <div key={task.name}>
-                {/* Task Row */}
+                {/* Standalone Task Row */}
                 {renderTaskItem(
                   task,
                   0,
@@ -297,20 +513,22 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
                   hasSubtasks,
                   isTaskExpanded,
                   hasSubtasks ? () => {
-                    console.log('Task toggle clicked:', task.name);
+                    console.log('Standalone task toggle clicked:', task.name, 'Subtasks:', taskSubtasks.length);
                     toggleTask(task.name);
                   } : undefined
                 )}
 
-                {/* Subtasks */}
-                {isTaskExpanded && taskSubtasks.map((subtask) => (
-                  renderTaskItem(
-                    subtask,
-                    1,
-                    'subtask',
-                    false,
-                    false
-                  )
+                {/* Subtasks for standalone task */}
+                {isTaskExpanded && hasSubtasks && taskSubtasks.map((subtask: any, subIndex: number) => (
+                  <div key={`standalone-subtask-${subIndex}`}>
+                    {renderTaskItem(
+                      subtask,
+                      1,
+                      'subtask',
+                      false,
+                      false
+                    )}
+                  </div>
                 ))}
               </div>
             );
@@ -356,6 +574,26 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({ pr
         projectName={projectName}
         onSuccess={() => {
           mutatePhases(); // Refresh phases data
+        }}
+      />
+
+      {/* Create Task Modal */}
+      <CreateTask
+        isOpen={isCreateTaskModalOpen}
+        onClose={() => setIsCreateTaskModalOpen(false)}
+        projectName={projectName}
+        onSuccess={() => {
+          mutateTasks(); // Refresh tasks data
+        }}
+      />
+
+      {/* Create SubTask Modal */}
+      <CreateSubTask
+        isOpen={isCreateSubTaskModalOpen}
+        onClose={() => setIsCreateSubTaskModalOpen(false)}
+        projectName={projectName}
+        onSuccess={() => {
+          mutateSubtasks(); // Refresh subtasks data
         }}
       />
     </div>

@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "SubTask-.######",
  "creation": "2025-08-12 13:17:01.486290",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -63,10 +64,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-12 14:00:46.222992",
+ "modified": "2025-08-13 13:18:10.992819",
  "modified_by": "Administrator",
  "module": "Todo",
  "name": "SubTask",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
