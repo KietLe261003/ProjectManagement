@@ -3,8 +3,6 @@ import { useProjectData } from '../hooks/useProjectData';
 import { ProjectFilter } from './ProjectFilter';
 import { ProjectOverview } from './ProjectOverview';
 import { TaskManagement } from './TaskManagement';
-import { TimeTracking } from './TimeTracking';
-import { CostAnalysis } from './CostAnalysis';
 import { LoadingSpinner } from './LoadingSpinner';
 import { useFrappeGetDocList } from 'frappe-react-sdk';
 interface Task {
