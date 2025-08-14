@@ -134,7 +134,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-4">
-            <div>
+            <div className='flex flex-col gap-4'>
               <Label htmlFor="subject">Task Subject *</Label>
               <Input
                 id="subject"
@@ -148,7 +148,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
               )}
             </div>
 
-            <div>
+            <div className='flex flex-col gap-4'>
               <Label htmlFor="description">Description</Label>
               <textarea
                 id="description"
@@ -161,7 +161,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="priority">Priority</Label>
                 <select
                   id="priority"
@@ -176,7 +176,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 </select>
               </div>
 
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="status">Status</Label>
                 <select
                   id="status"
@@ -192,7 +192,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="expected_time">Expected Time (hours)</Label>
                 <Input
                   id="expected_time"
@@ -205,7 +205,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 />
               </div>
 
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="task_weight">Task Weight</Label>
                 <Input
                   id="task_weight"

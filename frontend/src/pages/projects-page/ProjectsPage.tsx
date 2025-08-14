@@ -12,6 +12,7 @@ export const ProjectsPage: React.FC = () => {
   const { data, isLoading, error } = useFrappeGetDocList('Project', {
     fields: [
       'name', 
+      'owner',
       'project_name', 
       'project_type', 
       'status', 

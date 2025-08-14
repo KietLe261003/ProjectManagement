@@ -250,14 +250,6 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({ phase, projectName, 
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-semibold text-gray-900">Tasks in this Phase</h3>
-          <Button 
-            size="sm" 
-            className="flex items-center gap-2"
-            onClick={() => setIsCreateTaskModalOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add Task
-          </Button>
         </div>
 
         {tasksLoading ? (
