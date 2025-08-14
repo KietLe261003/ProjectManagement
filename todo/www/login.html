@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Management - Login</title>
+    <link rel="stylesheet" href="/assets/frappe/css/bootstrap.css">
+    <link rel="stylesheet" href="/assets/todo/css/login.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+            margin: 20px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 300;
+            font-size: 28px;
+        }
+        
+        .login-header p {
+            color: #666;
+            margin: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            margin-top: 10px;
+            padding: 10px;
+            background: #ffeaea;
+            border-radius: 5px;
+            border-left: 4px solid #e74c3c;
+            display: none;
+        }
+        
+        .success-message {
+            color: #27ae60;
+            margin-top: 10px;
+            padding: 10px;
+            background: #eafaf1;
+            border-radius: 5px;
+            border-left: 4px solid #27ae60;
+            display: none;
+        }
+        
+        .remember-me {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .remember-me input {
+            margin-right: 8px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+            color: #667eea;
+        }
+        
+        .loading .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer-links {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e5e9;
+        }
+        
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+        
+        .footer-links a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Todo Management</h1>
+            <p>Đăng nhập để tiếp tục</p>
+        </div>
+        
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="username">Tên đăng nhập hoặc Email</label>
+                <input type="text" id="username" name="username" class="form-control" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Mật khẩu</label>
+                <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password">
+            </div>
+            
+            <div class="remember-me">
+                <input type="checkbox" id="remember" name="remember">
+                <label for="remember">Ghi nhớ đăng nhập</label>
+            </div>
+            
+            <button type="submit" class="btn-login" id="login-btn">
+                Đăng nhập
+            </button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                Đang đăng nhập...
+            </div>
+            
+            <div class="error-message" id="error-message"></div>
+        </form>
+        
+        <div class="footer-links">
+            <a href="#" onclick="showForgotPassword()">Quên mật khẩu?</a>
+            <a href="/app/login">Đăng nhập chuẩn</a>
+        </div>
+    </div>
+
+    <!-- Load jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto focus on username field
+            document.getElementById('username').focus();
+            
+            // Check if already logged in
+            checkLoginStatus();
+        });
+        
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const remember = document.getElementById('remember').checked;
+            
+            if (!username || !password) {
+                showError('Vui lòng nhập đầy đủ thông tin đăng nhập');
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('login-btn').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error-message').style.display = 'none';
+            
+            // Use XMLHttpRequest for better compatibility
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/method/login', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    // Hide loading state
+                    document.getElementById('login-btn').disabled = false;
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    if (xhr.status === 200) {
+                        console.log('Login response:', xhr.responseText);
+                        showSuccess('Đăng nhập thành công!');
+                        setTimeout(() => {
+                            // Redirect based on user
+                            if (username === 'Administrator') {
+                                window.location.href = '/app';
+                            } else {
+                                window.location.href = '/todo';
+                            }
+                        }, 1000);
+                    } else {
+                        console.log('Login error:', xhr.status, xhr.responseText);
+                        let errorMessage = 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
+                        
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.message) {
+                                errorMessage = response.message;
+                            } else if (response._server_messages) {
+                                const messages = JSON.parse(response._server_messages);
+                                if (messages.length > 0) {
+                                    const message = JSON.parse(messages[0]);
+                                    errorMessage = message.message || errorMessage;
+                                }
+                            }
+                        } catch (e) {
+                            if (xhr.status === 401) {
+                                errorMessage = 'Tên đăng nhập hoặc mật khẩu không đúng';
+                            }
+                        }
+                        
+                        showError(errorMessage);
+                    }
+                }
+            };
+            
+            // Send login data
+            const data = 'usr=' + encodeURIComponent(username) + 
+                        '&pwd=' + encodeURIComponent(password) + 
+                        '&remember_me=' + (remember ? '1' : '0');
+            xhr.send(data);
+        }
+        
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.className = 'error-message';
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        function showSuccess(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.className = 'success-message';
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        function showForgotPassword() {
+            alert('Tính năng quên mật khẩu sẽ được phát triển trong phiên bản tiếp theo.');
+        }
+        
+        // Check if user is already logged in
+        function checkLoginStatus() {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/method/frappe.auth.get_logged_user', true);
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message && response.message !== 'Guest') {
+                            // User is already logged in, redirect
+                            if (response.message === 'Administrator') {
+                                window.location.href = '/app';
+                            } else {
+                                window.location.href = '/todo';
+                            }
+                        }
+                    } catch (e) {
+                        // User is not logged in, continue with login page
+                    }
+                }
+            };
+            
+            xhr.send();
+        }
+        
+        // Handle Enter key press
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !document.getElementById('login-btn').disabled) {
+                const form = document.getElementById('login-form');
+                if (form) {
+                    handleLogin(e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
