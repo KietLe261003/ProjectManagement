@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
-import { useSearch, useFrappeGetDocList } from "frappe-react-sdk"
+import { useFrappeGetDocList } from "frappe-react-sdk"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -55,55 +55,65 @@ export function Combobox({
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
 
-  // Sử dụng useSearch cho search functionality
-  const { 
-    data: searchData, 
-    isLoading: isSearching, 
-    error: searchError 
-  } = useSearch(
-    doctype,
-    searchQuery,
-    filters
-  )
+  // Build filters for search - simple approach
+  const buildFilters = React.useMemo(() => {
+    let finalFilters: any = {}
+    
+    // Add base filters (simple cases only)
+    if (filters.length > 0) {
+      filters.forEach((filter) => {
+        if (Array.isArray(filter) && filter.length >= 3) {
+          const [field, operator, value] = filter
+          if (operator === "=") {
+            finalFilters[field] = value
+          }
+        }
+      })
+    }
 
-  // Fallback: Load initial data khi không có search
-  const { 
-    data: initialData, 
-    isLoading: isLoadingInitial, 
-    error: initialError 
-  } = useFrappeGetDocList(
-    doctype,
-    {
-      fields: [...new Set([...fields, displayField, valueField])],
-      filters,
-      limit,
-      orderBy: {
-        field: displayField,
-        order: "asc"
+    // Add search filter if search query exists  
+    if (searchQuery.trim()) {
+      finalFilters[displayField] = ["like", `%${searchQuery}%`]
+    }
+
+    // If no specific filters, just use search
+    if (Object.keys(finalFilters).length === 0 && searchQuery.trim()) {
+      return [[displayField, "like", `%${searchQuery}%`]]
+    }
+
+    // Convert object back to array format for consistent API
+    const filterArray: any[] = []
+    Object.entries(finalFilters).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        filterArray.push([key, value[0], value[1]])
+      } else {
+        filterArray.push([key, "=", value])
       }
-    },
-    searchQuery ? undefined : doctype // Chỉ load khi không search
-  )
+    })
+
+    return filterArray.length > 0 ? filterArray : undefined
+  }, [searchQuery, filters, displayField])
+
+  const { data, isLoading, error } = useFrappeGetDocList(doctype, {
+    fields: [...new Set([...fields, displayField, valueField])],
+    filters: buildFilters,
+    limit,
+    orderBy: {
+      field: displayField,
+      order: "asc"
+    }
+  })
 
   const options: ComboboxOption[] = React.useMemo(() => {
-    let dataToUse: any[] = []
+    if (!data || !Array.isArray(data)) return []
     
-    if (searchQuery && searchData) {
-      // useSearch trả về format khác, có thể là { message: SearchResult[] }
-      dataToUse = Array.isArray(searchData) ? searchData : searchData.message || []
-    } else if (!searchQuery && initialData) {
-      dataToUse = initialData
-    }
-    
-    return dataToUse.map((doc: any) => ({
+    return data.map((doc: any) => ({
       value: doc[valueField],
       label: doc[displayField]
     }))
-  }, [searchData, initialData, searchQuery, displayField, valueField])
+  }, [data, displayField, valueField])
 
   const selectedOption = options.find(option => option.value === value)
-  const isLoading = searchQuery ? isSearching : isLoadingInitial
-  const error = searchQuery ? searchError : initialError
 
   const handleSelect = (selectedValue: string) => {
     const newValue = selectedValue === value ? "" : selectedValue

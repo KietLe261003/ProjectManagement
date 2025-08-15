@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import type { Project } from '@/types/Projects/Project';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { DetailProject } from './DetailProject';
+import ProjectActions from './ProjectActions';
 
 interface ProjectListViewGridProps {
   projects: Project[];
+  onProjectsChange?: () => void;
 }
 
-const ProjectListViewGrid: React.FC<ProjectListViewGridProps> = ({ projects }) => {
+const ProjectListViewGrid: React.FC<ProjectListViewGridProps> = ({ projects, onProjectsChange }) => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -52,12 +54,19 @@ const ProjectListViewGrid: React.FC<ProjectListViewGridProps> = ({ projects }) =
             </div>
             <div className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-medium text-gray-900 truncate">
+                <h3 className="text-lg font-medium text-gray-900 truncate flex-1">
                   {project.project_name}
                 </h3>
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(project.status)}`}>
-                  {project.status || 'Open'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(project.status)}`}>
+                    {project.status || 'Open'}
+                  </span>
+                  <ProjectActions 
+                    project={project}
+                    onProjectUpdated={onProjectsChange}
+                    onProjectDeleted={onProjectsChange}
+                  />
+                </div>
               </div>
               <p className="text-sm text-gray-600 mb-4">{project.project_type || 'N/A'}</p>
               

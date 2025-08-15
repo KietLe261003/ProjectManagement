@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useFrappeCreateDoc } from 'frappe-react-sdk';
+import { useCreatePhaseTask } from '@/services/phaseTaskService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
   isOpen,
   onClose,
   projectName,
+  phaseId,
   onSuccess
 }) => {
   const [formData, setFormData] = useState({
@@ -38,7 +39,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { createDoc, loading } = useFrappeCreateDoc();
+  const { createTaskWithPhase, isLoading } = useCreatePhaseTask();
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -78,10 +79,13 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         ...formData,
         project: projectName,
         expected_time: Number(formData.expected_time),
-        task_weight: Number(formData.task_weight)
+        task_weight: Number(formData.task_weight),
+        phaseId: phaseId // Add phaseId to the data object
       };
 
-      await createDoc('Task', taskData);
+      // Use the service to create task with optional phase
+      const result = await createTaskWithPhase(taskData);
+      console.log('Task with phase created:', result);
 
       // Reset form
       setFormData({
@@ -129,12 +133,18 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
           </DialogTitle>
           <DialogDescription>
             Create a new task for project: <strong>{projectName}</strong>
+            {phaseId && (
+              <>
+                <br />
+                <span className="text-blue-600">🔗 This task will be linked to the current phase</span>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-4">
-            <div>
+            <div className='flex flex-col gap-4'>
               <Label htmlFor="subject">Task Subject *</Label>
               <Input
                 id="subject"
@@ -148,7 +158,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
               )}
             </div>
 
-            <div>
+            <div className='flex flex-col gap-4'>
               <Label htmlFor="description">Description</Label>
               <textarea
                 id="description"
@@ -161,7 +171,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="priority">Priority</Label>
                 <select
                   id="priority"
@@ -176,7 +186,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 </select>
               </div>
 
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="status">Status</Label>
                 <select
                   id="status"
@@ -192,7 +202,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="expected_time">Expected Time (hours)</Label>
                 <Input
                   id="expected_time"
@@ -205,7 +215,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 />
               </div>
 
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="task_weight">Task Weight</Label>
                 <Input
                   id="task_weight"
@@ -229,8 +239,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Task'}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Creating...' : 'Create Task'}
             </Button>
           </DialogFooter>
         </form>
