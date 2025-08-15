@@ -3,35 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo Management - Login</title>
+    <title>CT UAV - Project Management</title>
     <link rel="stylesheet" href="/assets/frappe/css/bootstrap.css">
     <link rel="stylesheet" href="/assets/todo/css/login.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #475569 75%, #64748b 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             min-height: 100vh;
             margin: 0;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Enhanced animated background with drone-inspired elements */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(3px 3px at 20px 30px, rgba(59, 130, 246, 0.4), transparent),
+                radial-gradient(3px 3px at 40px 70px, rgba(239, 68, 68, 0.4), transparent),
+                radial-gradient(2px 2px at 90px 40px, rgba(16, 185, 129, 0.3), transparent),
+                radial-gradient(2px 2px at 130px 80px, rgba(168, 85, 247, 0.3), transparent),
+                radial-gradient(1px 1px at 160px 30px, rgba(59, 130, 246, 0.5), transparent),
+                radial-gradient(1px 1px at 200px 100px, rgba(239, 68, 68, 0.5), transparent);
+            background-repeat: repeat;
+            background-size: 250px 250px;
+            animation: floating 25s linear infinite;
+            opacity: 0.7;
+        }
+        
+        /* Add flying drone effect */
+        body::after {
+            content: '✈';
+            position: absolute;
+            color: rgba(59, 130, 246, 0.6);
+            font-size: 20px;
+            animation: flyAcross 15s linear infinite;
+            z-index: 1;
+        }
+        
+        @keyframes floating {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-250px, -250px); }
+        }
+        
+        @keyframes flyAcross {
+            0% { 
+                left: -50px; 
+                top: 20%; 
+                transform: rotate(-15deg); 
+            }
+            25% { 
+                left: 25%; 
+                top: 15%; 
+                transform: rotate(5deg); 
+            }
+            50% { 
+                left: 50%; 
+                top: 25%; 
+                transform: rotate(-10deg); 
+            }
+            75% { 
+                left: 75%; 
+                top: 10%; 
+                transform: rotate(8deg); 
+            }
+            100% { 
+                left: calc(100% + 50px); 
+                top: 20%; 
+                transform: rotate(-5deg); 
+            }
         }
         
         .login-container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            padding: 40px;
-            max-width: 400px;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.2),
+                0 0 0 1px rgba(255, 255, 255, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            padding: 50px 40px;
+            max-width: 450px;
             width: 100%;
             margin: 20px;
-            animation: fadeInUp 0.6s ease-out;
+            animation: fadeInScale 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            z-index: 10;
         }
         
-        @keyframes fadeInUp {
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, 
+                rgba(59, 130, 246, 0.05) 0%, 
+                rgba(239, 68, 68, 0.05) 50%, 
+                rgba(16, 185, 129, 0.05) 100%);
+            border-radius: 25px;
+            z-index: -1;
+        }
+        
+        @keyframes fadeInScale {
             from {
                 opacity: 0;
-                transform: translateY(30px);
+                transform: scale(0.9) translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+        
+        .logo-container {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .logo {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            box-shadow: 
+                0 15px 35px rgba(59, 130, 246, 0.3),
+                0 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: linear-gradient(45deg, #3b82f6, #ef4444, #10b981, #3b82f6);
+            border-radius: 23px;
+            z-index: -1;
+            animation: borderGlow 4s linear infinite;
+        }
+        
+        .logo-image {
+            width: 80px;
+            height: auto;
+            max-height: 80px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+            transition: transform 0.3s ease;
+        }
+        
+        .logo:hover .logo-image {
+            transform: scale(1.05);
+        }
+        
+        @keyframes borderGlow {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(180deg); }
+        }
+        
+        .company-name {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6 0%, #ef4444 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0 0 5px 0;
+            letter-spacing: -0.5px;
+        }
+        
+        .tagline {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 400;
+            margin: 0 0 8px 0;
+            letter-spacing: 0.5px;
+        }
+        
+        .login-subtitle {
+            color: #475569;
+            font-size: 16px;
+            font-weight: 500;
+            margin: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #374151;
+            font-weight: 500;
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .form-control:focus + .form-icon {
+            color: #3b82f6;
+            transform: scale(1.1);
+        }
+        
+        .form-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #ef4444 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-login:hover::before {
+            left: 100%;
+        }
+        
+        .btn-login:active {
+            transform: translateY(-1px);
+        }
+        
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            margin-top: 15px;
+            padding: 12px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #ef4444;
+            display: none;
+            font-size: 14px;
+            animation: slideInUp 0.3s ease;
+        }
+        
+        .success-message {
+            color: #10b981;
+            margin-top: 15px;
+            padding: 12px 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #10b981;
+            display: none;
+            font-size: 14px;
+            animation: slideInUp 0.3s ease;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
             }
             to {
                 opacity: 1;
@@ -39,114 +352,36 @@
             }
         }
         
-        .login-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .login-header h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-weight: 300;
-            font-size: 28px;
-        }
-        
-        .login-header p {
-            color: #666;
-            margin: 0;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #333;
-            font-weight: 500;
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            box-sizing: border-box;
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .btn-login {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-        }
-        
-        .btn-login:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .error-message {
-            color: #e74c3c;
-            margin-top: 10px;
-            padding: 10px;
-            background: #ffeaea;
-            border-radius: 5px;
-            border-left: 4px solid #e74c3c;
-            display: none;
-        }
-        
-        .success-message {
-            color: #27ae60;
-            margin-top: 10px;
-            padding: 10px;
-            background: #eafaf1;
-            border-radius: 5px;
-            border-left: 4px solid #27ae60;
-            display: none;
-        }
-        
         .remember-me {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            font-size: 14px;
         }
         
         .remember-me input {
-            margin-right: 8px;
+            margin-right: 10px;
+            accent-color: #3b82f6;
+            transform: scale(1.2);
+        }
+        
+        .remember-me label {
+            color: #6b7280;
+            cursor: pointer;
+            margin: 0;
         }
         
         .loading {
             display: none;
             text-align: center;
-            margin-top: 10px;
-            color: #667eea;
+            margin-top: 15px;
+            color: #3b82f6;
+            font-size: 14px;
         }
         
         .loading .spinner {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-top: 2px solid #3b82f6;
             border-radius: 50%;
             width: 20px;
             height: 20px;
@@ -162,40 +397,87 @@
         
         .footer-links {
             text-align: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e1e5e9;
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(229, 231, 235, 0.8);
         }
         
         .footer-links a {
-            color: #667eea;
+            color: #3b82f6;
             text-decoration: none;
-            margin: 0 10px;
+            margin: 0 15px;
             font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            position: relative;
         }
         
         .footer-links a:hover {
-            color: #764ba2;
-            text-decoration: underline;
+            color: #ef4444;
+            transform: translateY(-1px);
+        }
+        
+        .footer-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #3b82f6, #ef4444);
+            transition: width 0.3s ease;
+        }
+        
+        .footer-links a:hover::after {
+            width: 100%;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 10px;
+                padding: 30px 25px;
+            }
+            
+            .company-name {
+                font-size: 24px;
+            }
+            
+            .logo {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .drone-icon {
+                font-size: 28px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1>Todo Management</h1>
-            <p>Đăng nhập để tiếp tục</p>
+            <div class="logo-container">
+                <div class="logo">
+                    <img src="https://ctuav.vn/wp-content/uploads/2024/08/Logo-moi-ctuav-300x269.png" alt="CT UAV Logo" class="logo-image">
+                </div>
+                <h1 class="company-name">CT UAV</h1>
+                <p class="tagline">Better fly - Better life</p>
+                <p class="login-subtitle">Project Management System</p>
+            </div>
         </div>
         
         <form id="login-form" onsubmit="handleLogin(event)">
             <div class="form-group">
                 <label for="username">Tên đăng nhập hoặc Email</label>
-                <input type="text" id="username" name="username" class="form-control" required autocomplete="username">
+                <input type="text" id="username" name="username" class="form-control" required autocomplete="username" placeholder="Nhập tên đăng nhập...">
+                <div class="form-icon">👤</div>
             </div>
             
             <div class="form-group">
                 <label for="password">Mật khẩu</label>
-                <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password">
+                <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password" placeholder="Nhập mật khẩu...">
+                <div class="form-icon">🔒</div>
             </div>
             
             <div class="remember-me">
@@ -204,12 +486,12 @@
             </div>
             
             <button type="submit" class="btn-login" id="login-btn">
-                Đăng nhập
+                Đăng nhập hệ thống
             </button>
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                Đang đăng nhập...
+                Đang xác thực thông tin...
             </div>
             
             <div class="error-message" id="error-message"></div>
@@ -217,7 +499,7 @@
         
         <div class="footer-links">
             <a href="#" onclick="showForgotPassword()">Quên mật khẩu?</a>
-            <a href="/app/login">Đăng nhập chuẩn</a>
+            <a href="/app/login">Đăng nhập Frappe</a>
         </div>
     </div>
 

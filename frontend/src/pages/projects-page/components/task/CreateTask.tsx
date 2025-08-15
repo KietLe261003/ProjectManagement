@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useFrappeCreateDoc } from 'frappe-react-sdk';
+import { useCreatePhaseTask } from '@/services/phaseTaskService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
   isOpen,
   onClose,
   projectName,
+  phaseId,
   onSuccess
 }) => {
   const [formData, setFormData] = useState({
@@ -38,7 +39,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { createDoc, loading } = useFrappeCreateDoc();
+  const { createTaskWithPhase, isLoading } = useCreatePhaseTask();
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -78,10 +79,13 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         ...formData,
         project: projectName,
         expected_time: Number(formData.expected_time),
-        task_weight: Number(formData.task_weight)
+        task_weight: Number(formData.task_weight),
+        phaseId: phaseId // Add phaseId to the data object
       };
 
-      await createDoc('Task', taskData);
+      // Use the service to create task with optional phase
+      const result = await createTaskWithPhase(taskData);
+      console.log('Task with phase created:', result);
 
       // Reset form
       setFormData({
@@ -129,6 +133,12 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
           </DialogTitle>
           <DialogDescription>
             Create a new task for project: <strong>{projectName}</strong>
+            {phaseId && (
+              <>
+                <br />
+                <span className="text-blue-600">🔗 This task will be linked to the current phase</span>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -229,8 +239,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Task'}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Creating...' : 'Create Task'}
             </Button>
           </DialogFooter>
         </form>

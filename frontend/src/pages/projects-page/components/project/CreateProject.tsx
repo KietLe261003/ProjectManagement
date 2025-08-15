@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
-import { useFrappeCreateDoc } from "frappe-react-sdk";
+import { useCreateProject } from "@/services";
 import { useState } from "react";
 
 interface ProjectFormData {
@@ -32,9 +32,13 @@ interface ProjectFormData {
   notes?: string;
 }
 
-const CreateProject = () => {
+interface CreateProjectProps {
+  onProjectCreated?: () => void;
+}
+
+const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
   const [open, setOpen] = useState(false);
-  const { createDoc, loading, error } = useFrappeCreateDoc();
+  const { createProject, isLoading, error } = useCreateProject();
   
   const {
     register,
@@ -51,16 +55,16 @@ const CreateProject = () => {
 
   const onSubmit = async (data: ProjectFormData) => {
     try {
-      await createDoc("Project", {
-        ...data,
-        // Convert date strings to proper format if needed
-        expected_start_date: data.expected_start_date || undefined,
-        expected_end_date: data.expected_end_date || undefined,
-      });
+      await createProject(data);
       
       // Reset form and close dialog on success
       reset();
       setOpen(false);
+      
+      // Call callback to refresh projects list
+      if (onProjectCreated) {
+        onProjectCreated();
+      }
       
       // Optionally show success message
       console.log("Project created successfully");
@@ -293,10 +297,10 @@ const CreateProject = () => {
             </DialogClose>
             <Button 
               type="submit" 
-              disabled={isSubmitting || loading}
+              disabled={isSubmitting || isLoading}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {isSubmitting || loading ? "Creating..." : "Create Project"}
+              {isSubmitting || isLoading ? "Creating..." : "Create Project"}
             </Button>
           </DialogFooter>
         </form>

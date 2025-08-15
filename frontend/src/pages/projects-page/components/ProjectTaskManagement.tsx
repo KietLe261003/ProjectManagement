@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { CheckCircle2, Circle, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CreateProjectPhase } from './CreateProjectPhase';
-import { CreateTask } from './CreateTask';
-import { CreateSubTask } from './CreateSubTask';
+import { CreateProjectPhase } from './phase/CreateProjectPhase';
 import type { SubTask } from '@/types/Todo/SubTask';
 
 interface ProjectTaskManagementProps {
@@ -23,8 +21,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [isCreatePhaseModalOpen, setIsCreatePhaseModalOpen] = useState(false);
-  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
-  const [isCreateSubTaskModalOpen, setIsCreateSubTaskModalOpen] = useState(false);
   const [phasesWithTasks, setPhasesWithTasks] = useState<any[]>([]);
 
   // Fetch project phases list first
@@ -73,14 +69,14 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   console.log('Phases With Tasks:', phasesWithTasks);
 
   // Fetch all tasks for this project
-  const { data: tasks, isLoading: tasksLoading, mutate: mutateTasks } = useFrappeGetDocList('Task', {
+  const { data: tasks, isLoading: tasksLoading } = useFrappeGetDocList('Task', {
     fields: ['name', 'subject', 'status', 'priority', 'project', 'exp_start_date', 'exp_end_date', 'progress'],
     filters: [['project', '=', projectName]],
     orderBy: { field: 'exp_start_date', order: 'asc' }
   });
 
   // Fetch all subtasks for this project
-  const { data: subtasks, isLoading: subtasksLoading, mutate: mutateSubtasks } = useFrappeGetDocList('SubTask', {
+  const { data: subtasks, isLoading: subtasksLoading } = useFrappeGetDocList('SubTask', {
     fields: ['name', 'subject', 'task', 'status', 'progress', 'start_date', 'end_date', 'description'],
     orderBy: { field: 'start_date', order: 'asc' }
   });
@@ -342,24 +338,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
         <div className="flex items-center gap-2">
           <Button 
             size="sm" 
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={() => setIsCreateSubTaskModalOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add SubTask
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={() => setIsCreateTaskModalOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add Task
-          </Button>
-          <Button 
-            size="sm" 
             className="flex items-center gap-2"
             onClick={() => setIsCreatePhaseModalOpen(true)}
           >
@@ -574,26 +552,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
         projectName={projectName}
         onSuccess={() => {
           mutatePhases(); // Refresh phases data
-        }}
-      />
-
-      {/* Create Task Modal */}
-      <CreateTask
-        isOpen={isCreateTaskModalOpen}
-        onClose={() => setIsCreateTaskModalOpen(false)}
-        projectName={projectName}
-        onSuccess={() => {
-          mutateTasks(); // Refresh tasks data
-        }}
-      />
-
-      {/* Create SubTask Modal */}
-      <CreateSubTask
-        isOpen={isCreateSubTaskModalOpen}
-        onClose={() => setIsCreateSubTaskModalOpen(false)}
-        projectName={projectName}
-        onSuccess={() => {
-          mutateSubtasks(); // Refresh subtasks data
         }}
       />
     </div>

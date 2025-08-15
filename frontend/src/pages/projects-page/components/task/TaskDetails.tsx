@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, DollarSign, Target, AlertCircle, CheckCircle2, Clock, User, Plus } from 'lucide-react';
+import { ArrowLeft, Calendar, Target, AlertCircle, CheckCircle2, Clock, User, Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CreateSubTask } from './CreateSubTask';
+import { CreateSubTask } from '../subtask/CreateSubTask';
 import { useFrappeGetDocList } from 'frappe-react-sdk';
+import EditTask from './EditTask';
+import DeleteTask from './DeleteTask';
 
 interface TaskDetailsProps {
   task: any;
   projectName: string;
   onBack: () => void;
   onViewSubTaskDetails?: (subtask: any) => void;
+  onTaskUpdated?: () => void;
+  onTaskDeleted?: () => void;
 }
 
-export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onBack, onViewSubTaskDetails }) => {
+export const TaskDetails: React.FC<TaskDetailsProps> = ({ 
+  task, 
+  projectName, 
+  onBack, 
+  onViewSubTaskDetails,
+  onTaskUpdated,
+  onTaskDeleted
+}) => {
   const [isCreateSubTaskModalOpen, setIsCreateSubTaskModalOpen] = useState(false);
+  const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
+  const [isDeleteTaskOpen, setIsDeleteTaskOpen] = useState(false);
 
   // Fetch subtasks for this task
   const { data: taskSubTasks, isLoading: subtasksLoading, mutate: mutateSubTasks } = useFrappeGetDocList('SubTask', {
@@ -20,6 +33,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
     filters: [['task', '=', task.name]],
     orderBy: { field: 'start_date', order: 'asc' }
   });
+
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
@@ -66,10 +80,23 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
     }
   };
 
+  const handleEditSuccess = () => {
+    if (onTaskUpdated) {
+      onTaskUpdated();
+    }
+  };
+
+  const handleDeleteSuccess = () => {
+    if (onTaskDeleted) {
+      onTaskDeleted();
+    }
+    onBack(); // Navigate back after deletion
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="sm"
@@ -79,10 +106,32 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
           <ArrowLeft className="h-4 w-4" />
           Back to Tasks
         </Button>
+        
+        {/* Edit and Delete Buttons */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditTaskOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Edit Task
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDeleteTaskOpen(true)}
+            className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Task
+          </Button>
+        </div>
       </div>
 
       {/* Task Header */}
-      <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6">
+      <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">
@@ -90,7 +139,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
                 <span className="text-xl">📝</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{task.subject || task.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{task.subject}</h1>
                 <p className="text-sm text-gray-600">Task Details</p>
               </div>
             </div>
@@ -121,7 +170,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
-              className="bg-gradient-to-r from-orange-500 to-red-600 h-3 rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-orange-500 to-yellow-600 h-3 rounded-full transition-all duration-500"
               style={{ width: `${task.progress || 0}%` }}
             ></div>
           </div>
@@ -130,25 +179,25 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
 
       {/* Key Information Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <Calendar className="h-6 w-6 text-orange-600" />
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Calendar className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-orange-600 uppercase tracking-wide">Expected Start</p>
+              <p className="text-sm font-medium text-blue-600 uppercase tracking-wide">Start Date</p>
               <p className="text-lg font-bold text-gray-900">{formatDate(task.exp_start_date)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-red-100 rounded-lg">
-              <Target className="h-6 w-6 text-red-600" />
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <Target className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-red-600 uppercase tracking-wide">Expected End</p>
+              <p className="text-sm font-medium text-purple-600 uppercase tracking-wide">End Date</p>
               <p className="text-lg font-bold text-gray-900">{formatDate(task.exp_end_date)}</p>
             </div>
           </div>
@@ -157,11 +206,11 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
         <div className="bg-green-50 border border-green-200 rounded-xl p-6">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-green-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-green-600" />
+              <User className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-green-600 uppercase tracking-wide">Expected Hours</p>
-              <p className="text-lg font-bold text-gray-900">{task.expected_time || 0}h</p>
+              <p className="text-sm font-medium text-green-600 uppercase tracking-wide">Assigned To</p>
+              <p className="text-lg font-bold text-gray-900">{task.owner || 'Unassigned'}</p>
             </div>
           </div>
         </div>
@@ -197,53 +246,36 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
 
           <div className="space-y-4">
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
-              <span className="text-gray-600 font-medium">Type</span>
-              <span className="text-gray-900 font-semibold">{task.type || 'Task'}</span>
+              <span className="text-gray-600 font-medium">Subtasks Count</span>
+              <span className="text-gray-900 font-semibold">{taskSubTasks?.length || 0}</span>
             </div>
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
-              <span className="text-gray-600 font-medium">Weight</span>
-              <span className="text-gray-900 font-semibold">{task.task_weight || 1}</span>
+              <span className="text-gray-600 font-medium">Duration</span>
+              <span className="text-gray-900 font-semibold">
+                {task.exp_start_date && task.exp_end_date
+                  ? `${Math.ceil(
+                      (new Date(task.exp_end_date).getTime() - new Date(task.exp_start_date).getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )} days`
+                  : 'N/A'}
+              </span>
             </div>
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600 font-medium">Progress</span>
               <span className="text-xl font-bold text-orange-600">{task.progress || 0}%</span>
             </div>
             <div className="flex items-center justify-between py-3">
-              <span className="text-gray-600 font-medium">Expected Time</span>
-              <span className="text-xl font-bold text-green-600">{task.expected_time || 0}h</span>
+              <span className="text-gray-600 font-medium">Assigned To</span>
+              <span className="text-lg font-semibold text-green-600">{task.owner || 'Unassigned'}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Assignment Information */}
-      {(task.assigned_to || task.assigned_to_full_name) && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">Assignment</h3>
-          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <User className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="font-medium text-gray-900">{task.assigned_to_full_name || task.assigned_to}</p>
-              <p className="text-sm text-gray-500">Assigned To</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SubTasks in this Task */}
+      {/* SubTasks */}
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-semibold text-gray-900">SubTasks</h3>
-          <Button 
-            size="sm" 
-            className="flex items-center gap-2"
-            onClick={() => setIsCreateSubTaskModalOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add SubTask
-          </Button>
         </div>
 
         {subtasksLoading ? (
@@ -259,8 +291,8 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
               <div className="grid grid-cols-12 gap-4 px-6 py-3">
                 <div className="col-span-1 text-sm font-medium text-gray-700">#</div>
                 <div className="col-span-5 text-sm font-medium text-gray-700">SubTask</div>
-                <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Task</div>
                 <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Status</div>
+                <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Progress</div>
                 <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Actions</div>
               </div>
             </div>
@@ -274,8 +306,8 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
                       <span className="text-sm text-gray-600">{index + 1}</span>
                     </div>
                     <div className="col-span-5 flex items-center gap-3">
-                      <div className="p-1 bg-purple-100 rounded">
-                        <span className="text-sm">📌</span>
+                      <div className="p-1 bg-green-100 rounded">
+                        <span className="text-sm">✅</span>
                       </div>
                       <div>
                         <div className="font-medium text-gray-900">{subtask.subject || subtask.name}</div>
@@ -283,12 +315,20 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
                       </div>
                     </div>
                     <div className="col-span-2 flex items-center justify-center">
-                      <span className="text-sm text-gray-600">{task.name}</span>
-                    </div>
-                    <div className="col-span-2 flex items-center justify-center">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(subtask.status || 'Open')}`}>
                         {subtask.status || 'Open'}
                       </span>
+                    </div>
+                    <div className="col-span-2 flex items-center justify-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-green-500 h-2 rounded-full"
+                            style={{ width: `${subtask.progress || 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium">{subtask.progress || 0}%</span>
+                      </div>
                     </div>
                     <div className="col-span-2 flex items-center justify-center">
                       {onViewSubTaskDetails && (
@@ -306,7 +346,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
                 ))
               ) : (
                 <div className="px-6 py-8 text-center text-gray-500">
-                  <div className="text-4xl mb-2">📌</div>
+                  <div className="text-4xl mb-2">✅</div>
                   <div className="text-lg font-medium mb-1">No subtasks yet</div>
                   <div className="text-sm">Click "Add SubTask" to create the first subtask for this task</div>
                 </div>
@@ -338,8 +378,25 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({ task, projectName, onB
         projectName={projectName}
         parentTask={task.name}
         onSuccess={() => {
+          console.log('SubTask created successfully for task:', task.name);
           mutateSubTasks(); // Refresh subtasks data
         }}
+      />
+
+      {/* Edit Task Dialog */}
+      <EditTask
+        task={task}
+        isOpen={isEditTaskOpen}
+        onClose={() => setIsEditTaskOpen(false)}
+        onSuccess={handleEditSuccess}
+      />
+
+      {/* Delete Task Dialog */}
+      <DeleteTask
+        task={task}
+        isOpen={isDeleteTaskOpen}
+        onClose={() => setIsDeleteTaskOpen(false)}
+        onSuccess={handleDeleteSuccess}
       />
     </div>
   );

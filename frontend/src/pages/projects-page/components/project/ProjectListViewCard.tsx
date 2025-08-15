@@ -2,13 +2,14 @@ import type { Project } from '@/types/Projects/Project';
 import { formatCurrency } from '@/utils/formatCurrency';
 import React, { useState } from 'react';
 import { DetailProject } from './DetailProject';
-
+import ProjectActions from './ProjectActions';
 
 interface ProjectListViewCardProps {
   projects: Project[];
+  onProjectsChange?: () => void;
 }
 
-const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) => {
+const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onProjectsChange }) => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -66,6 +67,9 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) =
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Deadline
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -118,6 +122,13 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) =
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(project.expected_end_date)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <ProjectActions 
+                    project={project}
+                    onProjectUpdated={onProjectsChange}
+                    onProjectDeleted={onProjectsChange}
+                  />
                 </td>
               </tr>
             ))}

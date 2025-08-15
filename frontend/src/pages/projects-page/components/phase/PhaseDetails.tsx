@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, DollarSign, Target, AlertCircle, CheckCircle2, Clock, Plus } from 'lucide-react';
+import { ArrowLeft, Calendar, DollarSign, Target, AlertCircle, CheckCircle2, Clock, Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CreateTask } from './CreateTask';
+import { CreateTask } from '../task/CreateTask';
 import { useFrappeGetDocList } from 'frappe-react-sdk';
+import EditPhase from './EditPhase';
+import DeletePhase from './DeletePhase';
 
 interface PhaseDetailsProps {
   phase: any;
   projectName: string;
   onBack: () => void;
   onViewTaskDetails?: (task: any) => void;
+  onPhaseUpdated?: () => void;
+  onPhaseDeleted?: () => void;
 }
 
-export const PhaseDetails: React.FC<PhaseDetailsProps> = ({ phase, projectName, onBack, onViewTaskDetails }) => {
+export const PhaseDetails: React.FC<PhaseDetailsProps> = ({ 
+  phase, 
+  projectName, 
+  onBack, 
+  onViewTaskDetails,
+  onPhaseUpdated,
+  onPhaseDeleted
+}) => {
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [isEditPhaseOpen, setIsEditPhaseOpen] = useState(false);
+  const [isDeletePhaseOpen, setIsDeletePhaseOpen] = useState(false);
 
   // Fetch tasks for this phase
   const { data: allTasks, isLoading: tasksLoading, mutate: mutateTasks } = useFrappeGetDocList('Task', {
@@ -33,8 +46,9 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({ phase, projectName, 
     
     // If no child table data, show all project tasks as fallback
     // (This can happen if child table is not loaded or empty)
-    return allTasks;
+    return [];
   }, [allTasks, phase.tasks]);
+
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
@@ -89,10 +103,23 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({ phase, projectName, 
     }
   };
 
+  const handleEditSuccess = () => {
+    if (onPhaseUpdated) {
+      onPhaseUpdated();
+    }
+  };
+
+  const handleDeleteSuccess = () => {
+    if (onPhaseDeleted) {
+      onPhaseDeleted();
+    }
+    onBack(); // Navigate back after deletion
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="sm"
@@ -102,6 +129,28 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({ phase, projectName, 
           <ArrowLeft className="h-4 w-4" />
           Back to Tasks
         </Button>
+        
+        {/* Edit and Delete Buttons */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditPhaseOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Edit Phase
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDeletePhaseOpen(true)}
+            className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Phase
+          </Button>
+        </div>
       </div>
 
       {/* Phase Header */}
@@ -344,8 +393,25 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({ phase, projectName, 
         projectName={projectName}
         phaseId={phase.name}
         onSuccess={() => {
+          console.log('Task created successfully for phase:', phase.name);
           mutateTasks(); // Refresh tasks data
         }}
+      />
+
+      {/* Edit Phase Dialog */}
+      <EditPhase
+        phase={phase}
+        isOpen={isEditPhaseOpen}
+        onClose={() => setIsEditPhaseOpen(false)}
+        onSuccess={handleEditSuccess}
+      />
+
+      {/* Delete Phase Dialog */}
+      <DeletePhase
+        phase={phase}
+        isOpen={isDeletePhaseOpen}
+        onClose={() => setIsDeletePhaseOpen(false)}
+        onSuccess={handleDeleteSuccess}
       />
     </div>
   );
