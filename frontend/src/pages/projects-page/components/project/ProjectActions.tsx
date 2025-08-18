@@ -10,23 +10,27 @@ interface ProjectActionsProps {
   project: Project;
   onProjectUpdated?: () => void;
   onProjectDeleted?: () => void;
+  onCloseDrawer?: () => void; // Add callback to close drawer
 }
 
 const ProjectActions: React.FC<ProjectActionsProps> = ({ 
   project, 
   onProjectUpdated, 
-  onProjectDeleted 
+  onProjectDeleted,
+  onCloseDrawer
 }) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const handleEdit = () => {
+  const handleEdit = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // Prevent card click
     setIsEditOpen(true);
     setIsPopoverOpen(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // Prevent card click
     setIsDeleteOpen(true);
     setIsPopoverOpen(false);
   };
@@ -40,6 +44,10 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   const handleDeleteSuccess = () => {
     if (onProjectDeleted) {
       onProjectDeleted();
+    }
+    // Close drawer if it's open
+    if (onCloseDrawer) {
+      onCloseDrawer();
     }
   };
 
@@ -59,12 +67,16 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
             <MoreVertical className="h-4 w-4" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-48 p-2" align="end">
+        <PopoverContent 
+          className="w-48 p-2" 
+          align="end"
+          onClick={(e) => e.stopPropagation()} // Prevent any clicks inside popover from bubbling
+        >
           <div className="space-y-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleEdit}
+              onClick={(e) => handleEdit(e)}
               className="w-full justify-start text-left"
             >
               <Edit2 className="mr-2 h-4 w-4" />
@@ -73,7 +85,7 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleDelete}
+              onClick={(e) => handleDelete(e)}
               className="w-full justify-start text-left text-red-600 hover:text-red-700 hover:bg-red-50"
             >
               <Trash2 className="mr-2 h-4 w-4" />

@@ -352,7 +352,6 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
   }
 
   const formatDate = (dateString?: string | null) => {
-    console.log("dateString:", dateString)
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString()
   }
@@ -472,19 +471,19 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     }`}
                 >
                   📋 {selectedPhase.subject}
-                  <button
+                  <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedPhase(null);
                       setActiveTab('tasks');
                     }}
-                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close phase details"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </span>
                 </button>
               )}
               {selectedTask && (
@@ -496,19 +495,19 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     }`}
                 >
                   📝 {selectedTask.subject || selectedTask.name}
-                  <button
+                  <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedTask(null);
                       setActiveTab('tasks');
                     }}
-                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close task details"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </span>
                 </button>
               )}
               {selectedSubTask && (
@@ -520,19 +519,19 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     }`}
                 >
                   📌 {selectedSubTask.subject || selectedSubTask.name}
-                  <button
+                  <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedSubTask(null);
                       setActiveTab('tasks');
                     }}
-                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close subtask details"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </span>
                 </button>
               )}
             </div>
@@ -883,6 +882,10 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     refreshProject();
                     setActiveTab('tasks');
                     setSelectedPhase(null);
+                  }}
+                  onTaskCreated={() => {
+                    // Refresh project data when task is created
+                    refreshProject();
                   }}
                 />
               </div>

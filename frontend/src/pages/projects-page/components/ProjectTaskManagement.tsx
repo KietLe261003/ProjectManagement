@@ -65,9 +65,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     }
   }, [phasesList]);
 
-  console.log('Phases List:', phasesList);
-  console.log('Phases With Tasks:', phasesWithTasks);
-
   // Fetch all tasks for this project
   const { data: tasks, isLoading: tasksLoading } = useFrappeGetDocList('Task', {
     fields: ['name', 'subject', 'status', 'priority', 'project', 'exp_start_date', 'exp_end_date', 'progress'],
@@ -314,17 +311,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   const projectTasks = tasks as any[] || [];
   const projectSubtasks = subtasks as SubTask[] || [];
 
-  // Debug logging
-  console.log('ProjectTaskManagement render:', {
-    projectName,
-    phases: projectPhases.length,
-    tasks: projectTasks.length,
-    subtasks: projectSubtasks.length,
-    expandedPhases: Array.from(expandedPhases),
-    expandedTasks: Array.from(expandedTasks),
-    phasesData: projectPhases
-  });
-
   // Helper function to get subtasks for a task
   const getTaskSubtasks = (taskName: string) => {
     return projectSubtasks.filter(sub => sub.task === taskName);
@@ -374,7 +360,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                   phaseTaskList.length > 0,
                   isPhaseExpanded,
                   () => {
-                    console.log('Phase toggle clicked:', phase.name, 'Tasks:', phaseTaskList.length, 'Tasks data:', phaseTaskList);
                     togglePhase(phase.name);
                   }
                 )}
@@ -400,7 +385,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                           hasSubtasks,
                           isTaskExpanded,
                           hasSubtasks ? () => {
-                            console.log('Phase task toggle clicked:', phaseTask.task, 'Subtasks:', taskSubtasks.length);
                             toggleTask(phaseTask.task);
                           } : undefined
                         )}
@@ -430,7 +414,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                         hasSubtasks,
                         isTaskExpanded,
                         hasSubtasks ? () => {
-                          console.log('Phase task toggle clicked:', taskData.name, 'Subtasks:', taskSubtasks.length);
                           toggleTask(taskData.name);
                         } : undefined
                       )}
@@ -491,7 +474,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                   hasSubtasks,
                   isTaskExpanded,
                   hasSubtasks ? () => {
-                    console.log('Standalone task toggle clicked:', task.name, 'Subtasks:', taskSubtasks.length);
                     toggleTask(task.name);
                   } : undefined
                 )}

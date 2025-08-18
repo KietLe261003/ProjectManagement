@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Calendar, DollarSign, Target, AlertCircle, CheckCircle2, Clock, Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateTask } from '../task/CreateTask';
-import { useFrappeGetDocList } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
 import EditPhase from './EditPhase';
 import DeletePhase from './DeletePhase';
 
@@ -13,6 +13,7 @@ interface PhaseDetailsProps {
   onViewTaskDetails?: (task: any) => void;
   onPhaseUpdated?: () => void;
   onPhaseDeleted?: () => void;
+  onTaskCreated?: () => void;
 }
 
 export const PhaseDetails: React.FC<PhaseDetailsProps> = ({ 
@@ -21,11 +22,24 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
   onBack, 
   onViewTaskDetails,
   onPhaseUpdated,
-  onPhaseDeleted
+  onPhaseDeleted,
+  onTaskCreated
 }) => {
+
+  
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isEditPhaseOpen, setIsEditPhaseOpen] = useState(false);
   const [isDeletePhaseOpen, setIsDeletePhaseOpen] = useState(false);
+
+  // Fetch current phase data to get updated phase.tasks
+  const { data: currentPhase, mutate: mutatePhase } = useFrappeGetDoc(
+    'project_phase',
+    phase.name,
+    'project_phase'
+  );
+
+  // Use currentPhase if available, otherwise fallback to phase prop
+  const activePhase = currentPhase || phase;
 
   // Fetch tasks for this phase
   const { data: allTasks, isLoading: tasksLoading, mutate: mutateTasks } = useFrappeGetDocList('Task', {
@@ -38,16 +52,14 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
   const phaseTasks = React.useMemo(() => {
     if (!allTasks) return [];
     
-    // If phase has tasks child table data, filter based on that
-    if (phase.tasks && phase.tasks.length > 0) {
-      const phaseTaskNames = phase.tasks.map((phaseTask: any) => phaseTask.task);
+    // Use activePhase.tasks (which could be updated from server)
+    if (activePhase.tasks && activePhase.tasks.length > 0) {
+      const phaseTaskNames = activePhase.tasks.map((phaseTask: any) => phaseTask.task);
       return allTasks.filter((task: any) => phaseTaskNames.includes(task.name));
     }
     
-    // If no child table data, show all project tasks as fallback
-    // (This can happen if child table is not loaded or empty)
     return [];
-  }, [allTasks, phase.tasks]);
+  }, [allTasks, activePhase.tasks]);
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
@@ -162,24 +174,24 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
                 <span className="text-xl">📋</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{phase.subject}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{activePhase.subject}</h1>
                 <p className="text-sm text-gray-600">Phase Details</p>
               </div>
             </div>
             
-            {phase.details && (
-              <p className="text-gray-700 leading-relaxed">{phase.details}</p>
+            {activePhase.details && (
+              <p className="text-gray-700 leading-relaxed">{activePhase.details}</p>
             )}
           </div>
 
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${getStatusColor(phase.status || 'Open')}`}>
-              {getStatusIcon(phase.status || 'Open')}
-              <span className="font-medium">{phase.status || 'Open'}</span>
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${getStatusColor(activePhase.status || 'Open')}`}>
+              {getStatusIcon(activePhase.status || 'Open')}
+              <span className="font-medium">{activePhase.status || 'Open'}</span>
             </div>
-            {phase.priority && (
-              <div className={`px-3 py-1 rounded-full border ${getPriorityColor(phase.priority)}`}>
-                <span className="text-sm font-medium">{phase.priority}</span>
+            {activePhase.priority && (
+              <div className={`px-3 py-1 rounded-full border ${getPriorityColor(activePhase.priority)}`}>
+                <span className="text-sm font-medium">{activePhase.priority}</span>
               </div>
             )}
           </div>
@@ -189,12 +201,12 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
         <div className="mt-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">Phase Progress</span>
-            <span className="text-lg font-bold text-blue-600">{phase.progress || 0}%</span>
+            <span className="text-lg font-bold text-blue-600">{activePhase.progress || 0}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
               className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500"
-              style={{ width: `${phase.progress || 0}%` }}
+              style={{ width: `${activePhase.progress || 0}%` }}
             ></div>
           </div>
         </div>
@@ -209,7 +221,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
             </div>
             <div>
               <p className="text-sm font-medium text-blue-600 uppercase tracking-wide">Start Date</p>
-              <p className="text-lg font-bold text-gray-900">{formatDate(phase.start_date)}</p>
+              <p className="text-lg font-bold text-gray-900">{formatDate(activePhase.start_date)}</p>
             </div>
           </div>
         </div>
@@ -221,7 +233,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
             </div>
             <div>
               <p className="text-sm font-medium text-purple-600 uppercase tracking-wide">End Date</p>
-              <p className="text-lg font-bold text-gray-900">{formatDate(phase.end_date)}</p>
+              <p className="text-lg font-bold text-gray-900">{formatDate(activePhase.end_date)}</p>
             </div>
           </div>
         </div>
@@ -233,7 +245,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
             </div>
             <div>
               <p className="text-sm font-medium text-green-600 uppercase tracking-wide">Estimated Cost</p>
-              <p className="text-lg font-bold text-gray-900">{formatCurrency(phase.costing)}</p>
+              <p className="text-lg font-bold text-gray-900">{formatCurrency(activePhase.costing)}</p>
             </div>
           </div>
         </div>
@@ -246,7 +258,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600 font-medium">Phase ID</span>
-              <span className="text-gray-900 font-semibold">{phase.name}</span>
+              <span className="text-gray-900 font-semibold">{activePhase.name}</span>
             </div>
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600 font-medium">Project</span>
@@ -254,15 +266,15 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
             </div>
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600 font-medium">Status</span>
-              <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getStatusColor(phase.status || 'Open')}`}>
-                {getStatusIcon(phase.status || 'Open')}
-                <span className="font-medium">{phase.status || 'Open'}</span>
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getStatusColor(activePhase.status || 'Open')}`}>
+                {getStatusIcon(activePhase.status || 'Open')}
+                <span className="font-medium">{activePhase.status || 'Open'}</span>
               </div>
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-gray-600 font-medium">Priority</span>
-              <div className={`px-3 py-1 rounded-full ${getPriorityColor(phase.priority || 'Medium')}`}>
-                <span className="font-medium">{phase.priority || 'Medium'}</span>
+              <div className={`px-3 py-1 rounded-full ${getPriorityColor(activePhase.priority || 'Medium')}`}>
+                <span className="font-medium">{activePhase.priority || 'Medium'}</span>
               </div>
             </div>
           </div>
@@ -270,14 +282,14 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600 font-medium">Tasks Count</span>
-              <span className="text-gray-900 font-semibold">{phase.tasks?.length || 0}</span>
+              <span className="text-gray-900 font-semibold">{activePhase.tasks?.length || 0}</span>
             </div>
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600 font-medium">Duration</span>
               <span className="text-gray-900 font-semibold">
-                {phase.start_date && phase.end_date
+                {activePhase.start_date && activePhase.end_date
                   ? `${Math.ceil(
-                      (new Date(phase.end_date).getTime() - new Date(phase.start_date).getTime()) /
+                      (new Date(activePhase.end_date).getTime() - new Date(activePhase.start_date).getTime()) /
                         (1000 * 60 * 60 * 24)
                     )} days`
                   : 'N/A'}
@@ -285,7 +297,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
             </div>
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <span className="text-gray-600 font-medium">Progress</span>
-              <span className="text-xl font-bold text-blue-600">{phase.progress || 0}%</span>
+              <span className="text-xl font-bold text-blue-600">{activePhase.progress || 0}%</span>
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-gray-600 font-medium">Estimated Cost</span>
@@ -392,9 +404,25 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
         onClose={() => setIsCreateTaskModalOpen(false)}
         projectName={projectName}
         phaseId={phase.name}
-        onSuccess={() => {
-          console.log('Task created successfully for phase:', phase.name);
-          mutateTasks(); // Refresh tasks data
+        onSuccess={async () => {
+          console.log('Task creation success callback triggered');
+          
+          // Refresh the phase data first to get updated tasks
+          console.log('Refreshing phase data...');
+          await mutatePhase();
+          
+          // Also refresh the parent data if callback exists
+          if (onTaskCreated) {
+            console.log('Calling onTaskCreated to refresh parent data');
+            await onTaskCreated();
+          }
+          
+          // Then refresh tasks data after phase is updated
+          console.log('Refreshing tasks data after phase refresh...');
+          setTimeout(async () => {
+            await mutateTasks();
+            console.log('Tasks data refreshed');
+          }, 500);
         }}
       />
 

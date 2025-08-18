@@ -31,10 +31,10 @@ export class PhaseTaskService {
   static useCreatePhaseTask() {
     const { createDoc, loading: taskLoading } = useFrappeCreateDoc();
     const { call: insertCall } = useFrappePostCall('frappe.client.insert');
+    const { call: saveCall } = useFrappePostCall('frappe.client.save');
 
     const createTaskWithPhase = async (taskData: PhaseTaskData) => {
       try {
-        console.log('Creating task with data:', taskData);
         
         // Step 1: Create the Task first
         const createdTask = await createDoc('Task', {
@@ -52,11 +52,10 @@ export class PhaseTaskService {
 
         // Step 2: If phaseId is provided, create Project Phase Task
         if (taskData.phaseId && createdTask) {
-          console.log('Linking task to phase:', taskData.phaseId);
           
           const phaseTaskData: ProjectPhaseTaskData = {
             parent: taskData.phaseId,
-            parenttype: 'Project Phase',
+            parenttype: 'project_phase',
             parentfield: 'tasks',
             task: createdTask.name,
             task_name: createdTask.subject,
@@ -74,6 +73,20 @@ export class PhaseTaskService {
           });
 
           console.log('Project Phase Task created successfully:', phaseTaskResult);
+          
+          // Force save parent document to ensure child table is committed
+          try {
+            console.log('Saving parent phase document to commit child table changes...');
+            const saveResult = await saveCall({
+              doc: {
+                doctype: 'project_phase',
+                name: taskData.phaseId
+              }
+            });
+            console.log('Parent phase saved successfully:', saveResult);
+          } catch (saveError) {
+            console.warn('Failed to save parent phase, but child was created:', saveError);
+          }
           
           return {
             success: true,
