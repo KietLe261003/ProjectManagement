@@ -134,7 +134,7 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-4">
-            <div>
+            <div className='flex flex-col gap-4'>
               <Label htmlFor="subject">SubTask Subject *</Label>
               <Input
                 id="subject"
@@ -148,7 +148,7 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
               )}
             </div>
 
-            <div>
+            <div className='flex flex-col gap-4'>
               <Label htmlFor="task">Parent Task *</Label>
               <Input
                 id="task"
@@ -165,7 +165,7 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
               </p>
             </div>
 
-            <div>
+            <div className='flex flex-col gap-4'>
               <Label htmlFor="description">Description</Label>
               <textarea
                 id="description"
@@ -178,7 +178,7 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="priority">Priority</Label>
                 <select
                   id="priority"
@@ -192,7 +192,7 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
                 </select>
               </div>
 
-              <div>
+              <div className='flex flex-col gap-4'>
                 <Label htmlFor="status">Status</Label>
                 <select
                   id="status"

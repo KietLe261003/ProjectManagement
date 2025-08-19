@@ -62,8 +62,10 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
       };
       
       fetchPhasesWithTasks();
+    } else {
+      setPhasesWithTasks([]);
     }
-  }, [phasesList]);
+  }, [phasesList?.length, phasesList?.map(p => p.name).join(',')]);  // More stable dependencies
 
   // Fetch all tasks for this project
   const { data: tasks, isLoading: tasksLoading } = useFrappeGetDocList('Task', {
@@ -72,9 +74,13 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     orderBy: { field: 'exp_start_date', order: 'asc' }
   });
 
-  // Fetch all subtasks for this project
+  // Get task names for filtering subtasks
+  const taskNames = tasks?.map((task: any) => task.name) || [];
+
+  // Fetch all subtasks for tasks in this project
   const { data: subtasks, isLoading: subtasksLoading } = useFrappeGetDocList('SubTask', {
     fields: ['name', 'subject', 'task', 'status', 'progress', 'start_date', 'end_date', 'description'],
+    filters: taskNames.length > 0 ? [['task', 'in', taskNames]] : [['task', '=', 'dummy-non-existent-task']],
     orderBy: { field: 'start_date', order: 'asc' }
   });
 
