@@ -56,3 +56,6 @@ export interface FilteredData {
   filteredTasks: Task[];
   filteredTimesheets: Timesheet[];
 }
+
+// Export ToDo interface
+export type { ToDo } from './Todo/ToDo';

@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Calendar, DollarSign, User, Users, Crown, Plus, Edit, Trash2 } from "lucide-react"
-import { useFrappeGetDoc, useFrappePostCall, useFrappeAuth } from "frappe-react-sdk"
+import { useState, useEffect, useMemo } from 'react'
+import { Calendar, DollarSign, User, Users, Crown, Plus, Edit, Trash2, RefreshCw } from "lucide-react"
+import { useFrappeGetDoc, useFrappePostCall, useFrappeAuth, useFrappeGetDocList } from "frappe-react-sdk"
 import { useForm, Controller } from "react-hook-form"
 
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ import { TaskDetails } from '../task/TaskDetails'
 import { SubTaskDetails } from '../subtask/SubTaskDetails'
 import EditProject from './EditProject'
 import DeleteProject from './DeleteProject'
+import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate'
 
 interface DetailProjectProps {
   project: Project | null
@@ -67,6 +68,10 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   // Edit and Delete project states
   const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
   const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
+  const [isCalculatingProgress, setIsCalculatingProgress] = useState(false);
+
+  // Hook for project progress calculation
+  const { updateProjectProgress } = useProjectProgressUpdate();
 
   // Fetch complete project data with users field
   const { data: fullProjectData, isLoading: loadingProject, mutate: refreshProject } = useFrappeGetDoc(
@@ -74,6 +79,20 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     project?.name || "",
     project?.name ? "Project" : undefined
   );
+
+  // Fetch phases for progress calculation
+  const { data: projectPhases } = useFrappeGetDocList('project_phase', {
+    fields: ['name', 'progress'],
+    filters: [['project', '=', project?.name || '']],
+    orderBy: { field: 'creation', order: 'asc' }
+  });
+
+  // Fetch tasks for progress calculation (fallback when no phases)
+  const { data: projectTasks } = useFrappeGetDocList('Task', {
+    fields: ['name', 'progress'],
+    filters: [['project', '=', project?.name || '']],
+    orderBy: { field: 'creation', order: 'asc' }
+  });
 
   const { call: insertCall } = useFrappePostCall('frappe.client.insert');
   const { call: saveCall } = useFrappePostCall('frappe.client.save');
@@ -94,6 +113,63 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   // Get users from the project data
   const projectUsers = fullProjectData?.users || project?.users || [];
   const loadingUsers = loadingProject;
+
+  // Calculate project progress based on phases or tasks
+  const calculatedProgress = useMemo(() => {
+    if (projectPhases && projectPhases.length > 0) {
+      // Calculate from phases
+      const totalProgress = projectPhases.reduce((sum: number, phase: any) => {
+        return sum + (phase.progress || 0);
+      }, 0);
+      return {
+        progress: Math.round(totalProgress / projectPhases.length),
+        source: 'phases',
+        count: projectPhases.length
+      };
+    } else if (projectTasks && projectTasks.length > 0) {
+      // Calculate from tasks
+      const totalProgress = projectTasks.reduce((sum: number, task: any) => {
+        return sum + (task.progress || 0);
+      }, 0);
+      return {
+        progress: Math.round(totalProgress / projectTasks.length),
+        source: 'tasks',
+        count: projectTasks.length
+      };
+    }
+    return {
+      progress: fullProjectData?.percent_complete || project?.percent_complete || 0,
+      source: 'manual',
+      count: 0
+    };
+  }, [projectPhases, projectTasks, fullProjectData?.percent_complete, project?.percent_complete]);
+
+  // Function to manually recalculate progress
+  const handleRecalculateProgress = async () => {
+    if (!project?.name) return;
+    
+    setIsCalculatingProgress(true);
+    try {
+      await updateProjectProgress(project.name);
+      // Refresh project data
+      await refreshProject();
+    } catch (error) {
+      console.error('Error recalculating project progress:', error);
+    } finally {
+      setIsCalculatingProgress(false);
+    }
+  };
+
+  // Auto-update project progress when phases or tasks change
+  useEffect(() => {
+    if (calculatedProgress.source !== 'manual' && project?.name) {
+      const currentDbProgress = fullProjectData?.percent_complete || project?.percent_complete || 0;
+      if (Math.abs(calculatedProgress.progress - currentDbProgress) > 1) {
+        // Only update if there's a significant difference (more than 1%)
+        handleRecalculateProgress();
+      }
+    }
+  }, [calculatedProgress.progress, projectPhases, projectTasks]);
 
   // Form hooks for member management
   const addMemberForm = useForm<MemberFormData>();
@@ -352,7 +428,6 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
   }
 
   const formatDate = (dateString?: string | null) => {
-    console.log("dateString:", dateString)
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString()
   }
@@ -472,19 +547,19 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     }`}
                 >
                   📋 {selectedPhase.subject}
-                  <button
+                  <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedPhase(null);
                       setActiveTab('tasks');
                     }}
-                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close phase details"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </span>
                 </button>
               )}
               {selectedTask && (
@@ -496,19 +571,19 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     }`}
                 >
                   📝 {selectedTask.subject || selectedTask.name}
-                  <button
+                  <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedTask(null);
                       setActiveTab('tasks');
                     }}
-                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close task details"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </span>
                 </button>
               )}
               {selectedSubTask && (
@@ -520,19 +595,19 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     }`}
                 >
                   📌 {selectedSubTask.subject || selectedSubTask.name}
-                  <button
+                  <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedSubTask(null);
                       setActiveTab('tasks');
                     }}
-                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors"
+                    className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close subtask details"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </span>
                 </button>
               )}
             </div>
@@ -546,15 +621,52 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">Project Progress</h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-lg font-medium text-gray-700">Overall Progress</span>
-                      <span className="text-2xl font-bold text-blue-600">{project.percent_complete || 0}%</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-medium text-gray-700">Overall Progress</span>
+                        {calculatedProgress.source !== 'manual' && (
+                          <span className="text-xs text-gray-500">
+                            (from {calculatedProgress.count} {calculatedProgress.source})
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-blue-600">{calculatedProgress.progress}%</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRecalculateProgress}
+                          disabled={isCalculatingProgress}
+                          className="h-8 w-8 p-0"
+                          title="Recalculate progress"
+                        >
+                          <RefreshCw className={`h-4 w-4 ${isCalculatingProgress ? 'animate-spin' : ''}`} />
+                        </Button>
+                      </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-4">
                       <div
                         className="bg-gradient-to-r from-blue-500 to-purple-600 h-4 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${project.percent_complete || 0}%` }}
+                        style={{ width: `${calculatedProgress.progress}%` }}
                       ></div>
                     </div>
+                    {calculatedProgress.source === 'phases' && projectPhases && (
+                      <div className="mt-3 text-xs text-gray-500">
+                        <div className="font-medium mb-1">Phase progress breakdown:</div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {projectPhases.map((phase: any, index: number) => (
+                            <div key={phase.name} className="flex justify-between">
+                              <span>Phase {index + 1}:</span>
+                              <span>{phase.progress || 0}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {calculatedProgress.source === 'tasks' && (
+                      <div className="mt-3 text-xs text-gray-500">
+                        Progress calculated from {calculatedProgress.count} direct tasks (no phases)
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -874,15 +986,31 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     setSelectedTask(task);
                     setActiveTab('task-details');
                   }}
-                  onPhaseUpdated={() => {
+                  onPhaseUpdated={async () => {
                     // Refresh project data when phase is updated
                     refreshProject();
+                    // Also recalculate project progress
+                    setTimeout(async () => {
+                      await handleRecalculateProgress();
+                    }, 500);
                   }}
-                  onPhaseDeleted={() => {
+                  onPhaseDeleted={async () => {
                     // Refresh project data and go back to tasks when phase is deleted
                     refreshProject();
                     setActiveTab('tasks');
                     setSelectedPhase(null);
+                    // Also recalculate project progress
+                    setTimeout(async () => {
+                      await handleRecalculateProgress();
+                    }, 500);
+                  }}
+                  onTaskCreated={async () => {
+                    // Refresh project data when task is created
+                    refreshProject();
+                    // Also recalculate project progress
+                    setTimeout(async () => {
+                      await handleRecalculateProgress();
+                    }, 500);
                   }}
                 />
               </div>
@@ -898,15 +1026,23 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     setSelectedSubTask(subtask);
                     setActiveTab('subtask-details');
                   }}
-                  onTaskUpdated={() => {
+                  onTaskUpdated={async () => {
                     // Refresh project data when task is updated
                     refreshProject();
+                    // Also recalculate project progress
+                    setTimeout(async () => {
+                      await handleRecalculateProgress();
+                    }, 500);
                   }}
-                  onTaskDeleted={() => {
+                  onTaskDeleted={async () => {
                     // Refresh project data and go back to tasks when task is deleted
                     refreshProject();
                     setActiveTab('tasks');
                     setSelectedTask(null);
+                    // Also recalculate project progress
+                    setTimeout(async () => {
+                      await handleRecalculateProgress();
+                    }, 500);
                   }}
                 />
               </div>
@@ -918,15 +1054,23 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   subtask={selectedSubTask}
                   projectName={project.name}
                   onBack={() => setActiveTab('tasks')}
-                  onSubTaskUpdated={() => {
+                  onSubTaskUpdated={async () => {
                     // Refresh project data when subtask is updated
                     refreshProject();
+                    // Also recalculate project progress
+                    setTimeout(async () => {
+                      await handleRecalculateProgress();
+                    }, 500);
                   }}
-                  onSubTaskDeleted={() => {
+                  onSubTaskDeleted={async () => {
                     // Refresh project data and go back to tasks when subtask is deleted
                     refreshProject();
                     setActiveTab('tasks');
                     setSelectedSubTask(null);
+                    // Also recalculate project progress
+                    setTimeout(async () => {
+                      await handleRecalculateProgress();
+                    }, 500);
                   }}
                 />
               </div>

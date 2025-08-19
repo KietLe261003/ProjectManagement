@@ -16,6 +16,7 @@ import { Plus } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { useCreateProject } from "@/services";
 import { useState } from "react";
+import { mutate } from "swr";
 
 interface ProjectFormData {
   project_name: string;
@@ -60,6 +61,13 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
       // Reset form and close dialog on success
       reset();
       setOpen(false);
+      
+      // Force refresh all Project-related SWR cache
+      mutate(
+        key => typeof key === 'string' && key.includes('Project'),
+        undefined,
+        { revalidate: true }
+      );
       
       // Call callback to refresh projects list
       if (onProjectCreated) {

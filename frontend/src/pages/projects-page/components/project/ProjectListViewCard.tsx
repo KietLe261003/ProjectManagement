@@ -123,11 +123,15 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(project.expected_end_date)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td 
+                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                  onClick={(e) => e.stopPropagation()} // Prevent row click when clicking actions
+                >
                   <ProjectActions 
                     project={project}
                     onProjectUpdated={onProjectsChange}
                     onProjectDeleted={onProjectsChange}
+                    onCloseDrawer={handleCloseDrawer}
                   />
                 </td>
               </tr>

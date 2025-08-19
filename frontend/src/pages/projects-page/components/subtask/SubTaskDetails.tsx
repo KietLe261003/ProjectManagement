@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar, Target, AlertCircle, CheckCircle2, Clock, FileText, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Target, AlertCircle, CheckCircle2, Clock, FileText, Edit, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
+import { useTaskProgressCalculation } from '@/services/taskProgressService';
+import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate';
 import EditSubTask from './EditSubTask';
 import DeleteSubTask from './DeleteSubTask';
 
@@ -21,6 +24,24 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
 }) => {
   const [isEditSubTaskOpen, setIsEditSubTaskOpen] = useState(false);
   const [isDeleteSubTaskOpen, setIsDeleteSubTaskOpen] = useState(false);
+
+  // Task progress calculation service
+  const { calculateAndUpdateTaskProgress } = useTaskProgressCalculation();
+  
+  // Phase progress update service
+  const { updatePhaseProgressForTask } = useProjectProgressUpdate();
+
+  // Fetch assignment data
+  const { data: assignmentData } = useFrappeGetDocList('ToDo', {
+    fields: ['name', 'allocated_to'],
+    filters: [['reference_type', '=', 'SubTask'], ['reference_name', '=', subtask?.name || '']],
+  });
+
+  // Get assigned user info
+  const assignedUser = assignmentData?.[0]?.allocated_to;
+  const { data: userInfo } = useFrappeGetDoc('User', assignedUser || '', {
+    shouldFetch: !!assignedUser
+  });
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
@@ -53,13 +74,53 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
     }
   };
 
-  const handleEditSuccess = () => {
+  const handleEditSuccess = async () => {
+    // Cập nhật progress của parent task sau khi edit subtask
+    if (subtask?.task) {
+      try {
+        await calculateAndUpdateTaskProgress(subtask.task);
+        
+        // Cập nhật progress của phase chứa task này
+        setTimeout(async () => {
+          try {
+            await updatePhaseProgressForTask(subtask.task, projectName);
+            console.log('Phase progress updated after subtask edit');
+          } catch (error) {
+            console.error('Error updating phase progress after subtask edit:', error);
+          }
+        }, 500);
+        
+      } catch (error) {
+        console.error('Error updating task progress after subtask edit:', error);
+      }
+    }
+    
     if (onSubTaskUpdated) {
       onSubTaskUpdated();
     }
   };
 
-  const handleDeleteSuccess = () => {
+  const handleDeleteSuccess = async () => {
+    // Cập nhật progress của parent task sau khi delete subtask
+    if (subtask?.task) {
+      try {
+        await calculateAndUpdateTaskProgress(subtask.task);
+        
+        // Cập nhật progress của phase chứa task này
+        setTimeout(async () => {
+          try {
+            await updatePhaseProgressForTask(subtask.task, projectName);
+            console.log('Phase progress updated after subtask delete');
+          } catch (error) {
+            console.error('Error updating phase progress after subtask delete:', error);
+          }
+        }, 500);
+        
+      } catch (error) {
+        console.error('Error updating task progress after subtask delete:', error);
+      }
+    }
+    
     if (onSubTaskDeleted) {
       onSubTaskDeleted();
     }
@@ -127,20 +188,6 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
               {getStatusIcon(subtask.status || 'Open')}
               <span className="font-medium">{subtask.status || 'Open'}</span>
             </div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">SubTask Progress</span>
-            <span className="text-lg font-bold text-green-600">{subtask.progress || 0}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full transition-all duration-500"
-              style={{ width: `${subtask.progress || 0}%` }}
-            ></div>
           </div>
         </div>
       </div>
@@ -230,9 +277,27 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
                   : 'N/A'}
               </span>
             </div>
-            <div className="flex items-center justify-between py-3">
-              <span className="text-gray-600 font-medium">Progress</span>
-              <span className="text-xl font-bold text-green-600">{subtask.progress || 0}%</span>
+            <div className="flex items-center justify-between py-3 border-t border-gray-100">
+              <span className="text-gray-600 font-medium flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Assigned To
+              </span>
+              <span className="text-gray-900 font-semibold">
+                {assignedUser ? (
+                  <div className="flex items-center gap-2">
+                    <span>{userInfo?.full_name || assignedUser}</span>
+                    {userInfo?.user_image && (
+                      <img 
+                        src={userInfo.user_image} 
+                        alt={userInfo.full_name || assignedUser}
+                        className="h-6 w-6 rounded-full"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-gray-400">Not assigned</span>
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -263,6 +328,7 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
       {/* Edit SubTask Dialog */}
       <EditSubTask
         subtask={subtask}
+        projectName={projectName}
         isOpen={isEditSubTaskOpen}
         onClose={() => setIsEditSubTaskOpen(false)}
         onSuccess={handleEditSuccess}

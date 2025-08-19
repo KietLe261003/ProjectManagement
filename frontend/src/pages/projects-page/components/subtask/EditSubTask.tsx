@@ -3,26 +3,44 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useFrappePostCall } from 'frappe-react-sdk';
+import { useFrappeGetDocList } from 'frappe-react-sdk';
+import { useProjectUsers } from '@/services/projectUsersService';
+import { useUpdateSubTask, useSubTaskAssignment } from '@/services/subTaskService';
+import { useTaskProgressCalculation } from '@/services/taskProgressService';
 
 interface EditSubTaskProps {
   subtask: any;
+  projectName: string; // Added projectName
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
-const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, isOpen, onClose, onSuccess }) => {
-  const { call: updateSubTask, loading, error } = useFrappePostCall('frappe.client.save');
+export const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, projectName, isOpen, onClose, onSuccess }) => {
+  const { updateSubTask, isLoading: updateLoading, error: updateError } = useUpdateSubTask();
+  const { assignSubTask, unassignSubTask } = useSubTaskAssignment();
+  const { calculateAndUpdateTaskProgress } = useTaskProgressCalculation();
+  
+  // Fetch project users for assignment dropdown
+  const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
+  
+  // Fetch current ToDo assignments for this subtask
+  const { data: existingToDos } = useFrappeGetDocList('ToDo', {
+    fields: ['name', 'allocated_to'],
+    filters: [['reference_type', '=', 'SubTask'], ['reference_name', '=', subtask?.name || '']],
+  });
   
   const [formData, setFormData] = useState({
     subject: '',
     status: 'Open',
     start_date: '',
     end_date: '',
-    progress: 0,
     description: '',
+    assign_to: '', // Added assign_to field
   });
+
+  // Get current assignment
+  const currentAssignment = existingToDos?.[0]?.allocated_to || '';
 
   // Update form data when subtask changes
   useEffect(() => {
@@ -32,11 +50,11 @@ const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, isOpen, onClose, onS
         status: subtask.status || 'Open',
         start_date: subtask.start_date ? subtask.start_date.split(' ')[0] : '',
         end_date: subtask.end_date ? subtask.end_date.split(' ')[0] : '',
-        progress: subtask.progress || 0,
         description: subtask.description || '',
+        assign_to: currentAssignment, // Set current assignment
       });
     }
-  }, [subtask]);
+  }, [subtask, currentAssignment]);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -51,13 +69,33 @@ const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, isOpen, onClose, onS
     if (!subtask) return;
 
     try {
-      await updateSubTask({
-        doc: {
-          doctype: 'SubTask',
-          name: subtask.name,
-          ...formData
+      // Prepare subtask data (exclude assign_to as it's not a subtask field)
+      const { assign_to, ...subTaskData } = formData;
+      
+      // Update subtask
+      await updateSubTask(subtask.name, subTaskData);
+      
+      // Handle assignment changes
+      const previousAssignment = currentAssignment;
+      const newAssignment = assign_to;
+      
+      if (previousAssignment && previousAssignment !== newAssignment) {
+        // Remove old assignment
+        const oldToDo = existingToDos?.find(todo => todo.allocated_to === previousAssignment);
+        if (oldToDo) {
+          await unassignSubTask(oldToDo.name);
         }
-      });
+      }
+      
+      if (newAssignment && newAssignment !== previousAssignment) {
+        // Create new assignment
+        await assignSubTask(subtask.name, newAssignment);
+      }
+      console.log(subTaskData," ",subtask.status)
+      // Update parent task progress if subtask status changed
+      if (subtask.task && subTaskData.status !== subtask.status) {
+        await calculateAndUpdateTaskProgress(subtask.task);
+      }
       
       if (onSuccess) {
         onSuccess();
@@ -76,8 +114,8 @@ const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, isOpen, onClose, onS
         status: subtask.status || 'Open',
         start_date: subtask.start_date ? subtask.start_date.split(' ')[0] : '',
         end_date: subtask.end_date ? subtask.end_date.split(' ')[0] : '',
-        progress: subtask.progress || 0,
         description: subtask.description || '',
+        assign_to: currentAssignment, // Reset to current assignment
       });
     }
     onClose();
@@ -143,20 +181,6 @@ const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, isOpen, onClose, onS
             </div>
           </div>
 
-          {/* Progress */}
-          <div className="space-y-2">
-            <Label htmlFor="progress">Progress (%)</Label>
-            <Input
-              id="progress"
-              type="number"
-              min="0"
-              max="100"
-              value={formData.progress}
-              onChange={(e) => handleInputChange('progress', parseInt(e.target.value) || 0)}
-              placeholder="0"
-            />
-          </div>
-
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
@@ -170,10 +194,33 @@ const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, isOpen, onClose, onS
             />
           </div>
 
+          {/* Assignment */}
+          <div className="space-y-2">
+            <Label htmlFor="assign_to">Assign To</Label>
+            <select
+              id="assign_to"
+              value={formData.assign_to}
+              onChange={(e) => handleInputChange('assign_to', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={usersLoading}
+            >
+              <option value="">Select user...</option>
+              {projectUsers?.map((projectUser) => (
+                <option 
+                  key={projectUser.name} 
+                  value={projectUser.user || projectUser.name}
+                >
+                  {projectUser.user || projectUser.name}
+                </option>
+              ))}
+            </select>
+            {usersLoading && <span className="text-sm text-gray-500">Loading users...</span>}
+          </div>
+
           {/* Error Display */}
-          {error && (
+          {updateError && (
             <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
-              <p><strong>Error:</strong> {error.message || 'Failed to update subtask'}</p>
+              <p><strong>Error:</strong> {updateError.message || 'Failed to update subtask'}</p>
             </div>
           )}
 
@@ -181,8 +228,8 @@ const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, isOpen, onClose, onS
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update SubTask'}
+            <Button type="submit" disabled={updateLoading}>
+              {updateLoading ? 'Updating...' : 'Update SubTask'}
             </Button>
           </DialogFooter>
         </form>

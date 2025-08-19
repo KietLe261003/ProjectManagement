@@ -3,17 +3,30 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useFrappePostCall } from 'frappe-react-sdk';
+import { useFrappeGetDocList } from 'frappe-react-sdk';
+import { useProjectUsers } from '@/services/projectUsersService';
+import { useUpdatePhase, usePhaseAssignment } from '@/services/phaseService';
 
 interface EditPhaseProps {
   phase: any;
+  projectName: string; // Added projectName
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
-const EditPhase: React.FC<EditPhaseProps> = ({ phase, isOpen, onClose, onSuccess }) => {
-  const { call: updatePhase, loading, error } = useFrappePostCall('frappe.client.save');
+const EditPhase: React.FC<EditPhaseProps> = ({ phase, projectName, isOpen, onClose, onSuccess }) => {
+  const { updatePhase, isLoading: updateLoading, error: updateError } = useUpdatePhase();
+  const { assignPhase, unassignPhase } = usePhaseAssignment();
+  
+  // Fetch project users for assignment dropdown
+  const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
+  
+  // Fetch current ToDo assignments for this phase
+  const { data: existingToDos } = useFrappeGetDocList('ToDo', {
+    fields: ['name', 'allocated_to'],
+    filters: [['reference_type', '=', 'project_phase'], ['reference_name', '=', phase?.name || '']],
+  });
   
   const [formData, setFormData] = useState({
     subject: '',
@@ -24,7 +37,11 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, isOpen, onClose, onSuccess
     progress: 0,
     details: '',
     costing: 0,
+    assign_to: '', // Added assign_to field
   });
+
+  // Get current assignment
+  const currentAssignment = existingToDos?.[0]?.allocated_to || '';
 
   // Update form data when phase changes
   useEffect(() => {
@@ -38,9 +55,10 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, isOpen, onClose, onSuccess
         progress: phase.progress || 0,
         details: phase.details || '',
         costing: phase.costing || 0,
+        assign_to: currentAssignment, // Set current assignment
       });
     }
-  }, [phase]);
+  }, [phase, currentAssignment]);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -55,13 +73,28 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, isOpen, onClose, onSuccess
     if (!phase) return;
 
     try {
-      await updatePhase({
-        doc: {
-          doctype: 'project_phase',
-          name: phase.name,
-          ...formData
+      // Prepare phase data (exclude assign_to as it's not a phase field)
+      const { assign_to, ...phaseData } = formData;
+      
+      // Update phase
+      await updatePhase(phase.name, phaseData);
+      
+      // Handle assignment changes
+      const previousAssignment = currentAssignment;
+      const newAssignment = assign_to;
+      
+      if (previousAssignment && previousAssignment !== newAssignment) {
+        // Remove old assignment
+        const oldToDo = existingToDos?.find(todo => todo.allocated_to === previousAssignment);
+        if (oldToDo) {
+          await unassignPhase(oldToDo.name);
         }
-      });
+      }
+      
+      if (newAssignment && newAssignment !== previousAssignment) {
+        // Create new assignment
+        await assignPhase(phase.name, newAssignment);
+      }
       
       if (onSuccess) {
         onSuccess();
@@ -84,6 +117,7 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, isOpen, onClose, onSuccess
         progress: phase.progress || 0,
         details: phase.details || '',
         costing: phase.costing || 0,
+        assign_to: currentAssignment, // Reset to current assignment
       });
     }
     onClose();
@@ -208,10 +242,33 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, isOpen, onClose, onSuccess
             />
           </div>
 
+          {/* Assignment */}
+          <div className="space-y-2">
+            <Label htmlFor="assign_to">Assign To</Label>
+            <select
+              id="assign_to"
+              value={formData.assign_to}
+              onChange={(e) => handleInputChange('assign_to', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={usersLoading}
+            >
+              <option value="">Select user...</option>
+              {projectUsers?.map((projectUser) => (
+                <option 
+                  key={projectUser.name} 
+                  value={projectUser.user || projectUser.name}
+                >
+                  {projectUser.user || projectUser.name}
+                </option>
+              ))}
+            </select>
+            {usersLoading && <span className="text-sm text-gray-500">Loading users...</span>}
+          </div>
+
           {/* Error Display */}
-          {error && (
+          {updateError && (
             <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
-              <p><strong>Error:</strong> {error.message || 'Failed to update phase'}</p>
+              <p><strong>Error:</strong> {updateError.message || 'Failed to update phase'}</p>
             </div>
           )}
 
@@ -219,8 +276,8 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, isOpen, onClose, onSuccess
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Phase'}
+            <Button type="submit" disabled={updateLoading}>
+              {updateLoading ? 'Updating...' : 'Update Phase'}
             </Button>
           </DialogFooter>
         </form>

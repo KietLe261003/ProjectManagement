@@ -3,17 +3,40 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useFrappePostCall } from 'frappe-react-sdk';
+import { useFrappeGetDocList } from 'frappe-react-sdk';
+import { useProjectUsers } from '@/services/projectUsersService';
+import { useUpdateTask, useTaskAssignment } from '@/services/taskService';
+import { useManualProgressUpdate, useTaskStatusProgressUpdate } from '@/services/taskProgressService';
 
 interface EditTaskProps {
   task: any;
+  projectName: string; // Added projectName
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
-const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess }) => {
-  const { call: updateTask, loading, error } = useFrappePostCall('frappe.client.save');
+const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose, onSuccess }) => {
+  const { updateTask, isLoading: updateLoading, error: updateError } = useUpdateTask();
+  const { assignTask, unassignTask } = useTaskAssignment();
+  const { updateTaskProgress } = useManualProgressUpdate();
+  const { updateTaskProgressByStatus } = useTaskStatusProgressUpdate();
+  
+  // Fetch project users for assignment dropdown
+  const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
+  
+  // Fetch current ToDo assignments for this task
+  const { data: existingToDos } = useFrappeGetDocList('ToDo', {
+    fields: ['name', 'allocated_to'],
+    filters: [['reference_type', '=', 'Task'], ['reference_name', '=', task?.name || '']],
+  });
+  
+  // Fetch subtasks to check if task has subtasks
+  const { data: subtasks } = useFrappeGetDocList('SubTask', {
+    fields: ['name'],
+    filters: [['task', '=', task?.name || '']],
+    limit: 1
+  });
   
   const [formData, setFormData] = useState({
     subject: '',
@@ -23,11 +46,18 @@ const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess })
     exp_end_date: '',
     progress: 0,
     description: '',
+    assign_to: '', // Added assign_to field
   });
+
+  // State để track task có subtasks hay không
+  const [hasSubtasks, setHasSubtasks] = useState(false);
 
   // Update form data when task changes
   useEffect(() => {
     if (task) {
+      // Find current assignment from existing ToDos
+      const currentAssignment = existingToDos?.[0]?.allocated_to || '';
+      
       setFormData({
         subject: task.subject || '',
         status: task.status || 'Open',
@@ -36,9 +66,15 @@ const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess })
         exp_end_date: task.exp_end_date ? task.exp_end_date.split(' ')[0] : '',
         progress: task.progress || 0,
         description: task.description || '',
+        assign_to: currentAssignment,
       });
     }
-  }, [task]);
+  }, [task, existingToDos]);
+
+  // Check if task has subtasks when subtasks data changes
+  useEffect(() => {
+    setHasSubtasks(!!(subtasks && subtasks.length > 0));
+  }, [subtasks]);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -53,26 +89,75 @@ const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess })
     if (!task) return;
 
     try {
-      await updateTask({
-        doc: {
-          doctype: 'Task',
-          name: task.name,
-          ...formData
+      // Determine what type of progress update to use
+      const isProgressManuallyChanged = formData.progress !== (task.progress || 0);
+      const isStatusChanged = formData.status !== task.status;
+      
+      // Case 1: Task has subtasks and user manually changes progress
+      if (hasSubtasks && isProgressManuallyChanged) {
+        // Validate progress update (only assignee can manually change progress)
+        await updateTaskProgress(task.name, formData.progress);
+      }
+      
+      // Case 2: Task status changed by Project Leader/Manager 
+      else if (isStatusChanged && (formData.status === 'Completed' || formData.status === 'Cancelled')) {
+        // Update progress based on status
+        await updateTaskProgressByStatus(task.name, formData.status);
+      }
+      
+      // Case 3: Normal task update (no special progress logic needed)
+      else {
+        // Update the task using TaskService
+        await updateTask(task.name, formData);
+      }
+
+      // Handle assignment changes
+      const currentAssignment = existingToDos?.[0]?.allocated_to || '';
+      const newAssignment = formData.assign_to;
+
+      if (currentAssignment !== newAssignment) {
+        // Remove old assignment if exists
+        if (currentAssignment && existingToDos?.[0]) {
+          try {
+            await unassignTask(existingToDos[0].name);
+          } catch (deleteError) {
+            console.error('Error deleting old ToDo:', deleteError);
+          }
         }
-      });
+
+        // Create new assignment if provided
+        if (newAssignment) {
+          try {
+            await assignTask(task.name, formData.subject, newAssignment, formData.priority);
+          } catch (createError) {
+            console.error('Error creating new ToDo:', createError);
+          }
+        }
+      }
       
       if (onSuccess) {
         onSuccess();
       }
       
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating task:', err);
+      
+      // Show user-friendly error message
+      if (err?.message?.includes('modified')) {
+        alert('The task has been modified by someone else. Please close and reopen the task to get the latest version.');
+      } else if (err?.message?.includes('permission')) {
+        alert('You do not have permission to update this task.');
+      } else {
+        alert('Failed to update task. Please try again.');
+      }
     }
   };
 
   const handleCancel = () => {
     if (task) {
+      const currentAssignment = existingToDos?.[0]?.allocated_to || '';
+      
       setFormData({
         subject: task.subject || '',
         status: task.status || 'Open',
@@ -81,6 +166,7 @@ const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess })
         exp_end_date: task.exp_end_date ? task.exp_end_date.split(' ')[0] : '',
         progress: task.progress || 0,
         description: task.description || '',
+        assign_to: currentAssignment,
       });
     }
     onClose();
@@ -142,6 +228,39 @@ const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess })
             </div>
           </div>
 
+          {/* Assign To */}
+          <div className="space-y-2">
+            <Label htmlFor="assign_to">Assign To</Label>
+            <select
+              id="assign_to"
+              value={formData.assign_to}
+              onChange={(e) => handleInputChange('assign_to', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={usersLoading}
+            >
+              <option value="">Select user to assign (Optional)</option>
+              {projectUsers?.map((projectUser: any) => (
+                <option key={projectUser.user || projectUser.name} value={projectUser.user || projectUser.name}>
+                  {projectUser.full_name || projectUser.name}
+                  {projectUser.email && ` (${projectUser.email})`}
+                </option>
+              ))}
+            </select>
+            {usersLoading && (
+              <p className="text-sm text-gray-500">Loading users...</p>
+            )}
+            {!usersLoading && projectUsers && projectUsers.length > 10 && (
+              <p className="text-sm text-amber-600">
+                ⚠️ Showing all system users (project users not available)
+              </p>
+            )}
+            {existingToDos && existingToDos.length > 0 && (
+              <p className="text-sm text-blue-600">
+                💡 Changing assignment will update the ToDo automatically
+              </p>
+            )}
+          </div>
+
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -176,7 +295,24 @@ const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess })
               value={formData.progress}
               onChange={(e) => handleInputChange('progress', parseInt(e.target.value) || 0)}
               placeholder="0"
+              disabled={hasSubtasks}
             />
+            {/* Progress Mode Information */}
+            {hasSubtasks ? (
+              <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                <strong>🔄 Smart Progress Mode:</strong>
+                <ul className="mt-1 ml-4 list-disc text-xs">
+                  <li>Progress is automatically calculated from subtasks</li>
+                  <li>Only assignee can manually override progress</li>
+                  <li>Project leaders can set progress via status changes</li>
+                </ul>
+              </div>
+            ) : (
+              <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+                <strong>✏️ Manual Progress Mode:</strong>
+                <span className="text-xs"> Progress can be updated manually by anyone with edit permission</span>
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -193,9 +329,9 @@ const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess })
           </div>
 
           {/* Error Display */}
-          {error && (
+          {updateError && (
             <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
-              <p><strong>Error:</strong> {error.message || 'Failed to update task'}</p>
+              <p><strong>Error:</strong> {updateError.message || 'Failed to update task'}</p>
             </div>
           )}
 
@@ -203,8 +339,11 @@ const EditTask: React.FC<EditTaskProps> = ({ task, isOpen, onClose, onSuccess })
             <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Task'}
+            <Button type="submit" disabled={updateLoading}>
+              {updateLoading 
+                ? 'Updating...' 
+                : 'Update Task'
+              }
             </Button>
           </DialogFooter>
         </form>

@@ -57,7 +57,10 @@ const ProjectListViewGrid: React.FC<ProjectListViewGridProps> = ({ projects, onP
                 <h3 className="text-lg font-medium text-gray-900 truncate flex-1">
                   {project.project_name}
                 </h3>
-                <div className="flex items-center gap-2">
+                <div 
+                  className="flex items-center gap-2"
+                  onClick={(e) => e.stopPropagation()} // Prevent card click when clicking actions
+                >
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(project.status)}`}>
                     {project.status || 'Open'}
                   </span>
@@ -65,6 +68,7 @@ const ProjectListViewGrid: React.FC<ProjectListViewGridProps> = ({ projects, onP
                     project={project}
                     onProjectUpdated={onProjectsChange}
                     onProjectDeleted={onProjectsChange}
+                    onCloseDrawer={handleCloseDrawer}
                   />
                 </div>
               </div>

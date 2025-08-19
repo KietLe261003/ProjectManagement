@@ -13,7 +13,8 @@
   "start_date",
   "end_date",
   "detail_section",
-  "description"
+  "description",
+  "assigned_to"
  ],
  "fields": [
   {
@@ -59,13 +60,19 @@
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "User"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-13 13:18:10.992819",
- "modified_by": "Administrator",
+ "modified": "2025-08-19 10:44:23.667595",
+ "modified_by": "abcxyz@gmail.com",
  "module": "Todo",
  "name": "SubTask",
  "naming_rule": "Expression (old style)",

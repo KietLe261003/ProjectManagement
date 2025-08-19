@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CalendarIcon, Loader2 } from 'lucide-react';
+import { useProjectUsers } from '@/services/projectUsersService';
+import { usePhaseAssignment } from '@/services/phaseService';
 
 interface CreateProjectPhaseProps {
   isOpen: boolean;
@@ -32,10 +34,15 @@ export const CreateProjectPhase: React.FC<CreateProjectPhaseProps> = ({
     end_date: '',
     priority: 'Medium',
     details: '',
-    costing: 0
+    costing: 0,
+    assign_to: '' // Added assign_to field
   });
 
   const { createDoc, loading, error } = useFrappeCreateDoc();
+  const { assignPhase } = usePhaseAssignment();
+  
+  // Fetch project users for assignment dropdown
+  const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -52,17 +59,25 @@ export const CreateProjectPhase: React.FC<CreateProjectPhaseProps> = ({
     }
 
     try {
-      await createDoc('project_phase', {
+      // Prepare phase data (exclude assign_to as it's not a phase field)
+      const { assign_to, ...phaseData } = formData;
+      
+      const newPhase = await createDoc('project_phase', {
         project: projectName,
-        subject: formData.subject,
-        start_date: formData.start_date || null,
-        end_date: formData.end_date || null,
-        priority: formData.priority,
-        details: formData.details || null,
-        costing: formData.costing || 0,
+        subject: phaseData.subject,
+        start_date: phaseData.start_date || null,
+        end_date: phaseData.end_date || null,
+        priority: phaseData.priority,
+        details: phaseData.details || null,
+        costing: phaseData.costing || 0,
         status: 'Open',
         progress: 0
       });
+
+      // If assign_to is specified, create assignment
+      if (assign_to && newPhase) {
+        await assignPhase(newPhase.name, assign_to);
+      }
 
       // Reset form
       setFormData({
@@ -71,7 +86,8 @@ export const CreateProjectPhase: React.FC<CreateProjectPhaseProps> = ({
         end_date: '',
         priority: 'Medium',
         details: '',
-        costing: 0
+        costing: 0,
+        assign_to: ''
       });
 
       // Call success callback
@@ -94,7 +110,8 @@ export const CreateProjectPhase: React.FC<CreateProjectPhaseProps> = ({
       end_date: '',
       priority: 'Medium',
       details: '',
-      costing: 0
+      costing: 0,
+      assign_to: ''
     });
     onClose();
   };
@@ -179,6 +196,29 @@ export const CreateProjectPhase: React.FC<CreateProjectPhaseProps> = ({
               min="0"
               step="0.01"
             />
+          </div>
+
+          {/* Assignment */}
+          <div className="space-y-2">
+            <Label htmlFor="assign_to">Assign To</Label>
+            <select
+              id="assign_to"
+              value={formData.assign_to}
+              onChange={(e) => handleInputChange('assign_to', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={usersLoading}
+            >
+              <option value="">Select user...</option>
+              {projectUsers?.map((projectUser) => (
+                <option 
+                  key={projectUser.name} 
+                  value={projectUser.user || projectUser.name}
+                >
+                  {projectUser.user || projectUser.name}
+                </option>
+              ))}
+            </select>
+            {usersLoading && <span className="text-sm text-gray-500">Loading users...</span>}
           </div>
 
           {/* Details */}

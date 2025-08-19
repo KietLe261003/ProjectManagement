@@ -1,4 +1,4 @@
-import { useFrappeCreateDoc, useFrappePostCall } from 'frappe-react-sdk';
+import { useFrappeCreateDoc, useFrappePostCall, useFrappeGetDoc } from 'frappe-react-sdk';
 
 export interface PhaseTaskData {
   subject: string;
@@ -10,6 +10,7 @@ export interface PhaseTaskData {
   task_weight: number;
   project: string;
   phaseId?: string;
+  assign_to?: string; // Added assign_to field
 }
 
 export interface ProjectPhaseTaskData {
@@ -31,10 +32,13 @@ export class PhaseTaskService {
   static useCreatePhaseTask() {
     const { createDoc, loading: taskLoading } = useFrappeCreateDoc();
     const { call: insertCall } = useFrappePostCall('frappe.client.insert');
+    const { call: saveCall } = useFrappePostCall('frappe.client.save');
+    const { data: currentUser } = useFrappeGetDoc('User', '', {
+      shouldFetch: true
+    });
 
     const createTaskWithPhase = async (taskData: PhaseTaskData) => {
       try {
-        console.log('Creating task with data:', taskData);
         
         // Step 1: Create the Task first
         const createdTask = await createDoc('Task', {
@@ -50,13 +54,36 @@ export class PhaseTaskService {
 
         console.log('Task created successfully:', createdTask);
 
+        // Step 1.5: Create ToDo if assign_to is provided
+        let todoResult = null;
+        if (taskData.assign_to && createdTask) {
+          try {
+            todoResult = await insertCall({
+              doc: {
+                doctype: 'ToDo',
+                allocated_to: taskData.assign_to,
+                assigned_by: currentUser?.name || '',
+                description: `Task: ${taskData.subject}`,
+                reference_type: 'Task',
+                reference_name: createdTask.name,
+                status: 'Open',
+                priority: taskData.priority,
+                date: new Date().toISOString().split('T')[0] // Today's date
+              }
+            });
+            console.log('ToDo created successfully:', todoResult);
+          } catch (todoError) {
+            console.error('Error creating ToDo:', todoError);
+            // Don't fail the entire operation if ToDo creation fails
+          }
+        }
+
         // Step 2: If phaseId is provided, create Project Phase Task
         if (taskData.phaseId && createdTask) {
-          console.log('Linking task to phase:', taskData.phaseId);
           
           const phaseTaskData: ProjectPhaseTaskData = {
             parent: taskData.phaseId,
-            parenttype: 'Project Phase',
+            parenttype: 'project_phase',
             parentfield: 'tasks',
             task: createdTask.name,
             task_name: createdTask.subject,
@@ -75,10 +102,25 @@ export class PhaseTaskService {
 
           console.log('Project Phase Task created successfully:', phaseTaskResult);
           
+          // Force save parent document to ensure child table is committed
+          try {
+            console.log('Saving parent phase document to commit child table changes...');
+            const saveResult = await saveCall({
+              doc: {
+                doctype: 'project_phase',
+                name: taskData.phaseId
+              }
+            });
+            console.log('Parent phase saved successfully:', saveResult);
+          } catch (saveError) {
+            console.warn('Failed to save parent phase, but child was created:', saveError);
+          }
+          
           return {
             success: true,
             task: createdTask,
             phaseTask: phaseTaskResult,
+            todo: todoResult,
             message: 'Task created and linked to phase successfully'
           };
         }
@@ -86,6 +128,7 @@ export class PhaseTaskService {
         return {
           success: true,
           task: createdTask,
+          todo: todoResult,
           message: 'Task created successfully'
         };
 

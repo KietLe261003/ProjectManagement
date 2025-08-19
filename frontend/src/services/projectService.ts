@@ -47,14 +47,14 @@ export interface MemberCreateData {
 export class ProjectService {
   // Standard project fields
   static readonly PROJECT_FIELDS = [
-    'name', 
+    'name',
     'owner',
-    'project_name', 
-    'project_type', 
-    'status', 
-    'customer', 
+    'project_name',
+    'project_type',
+    'status',
+    'customer',
     'expected_start_date',
-    'expected_end_date', 
+    'expected_end_date',
     'percent_complete',
     'priority',
     'estimated_costing',
@@ -87,15 +87,15 @@ export class ProjectService {
   // Get projects for current user (owner or member)
   static useUserProjects(): ProjectServiceResponse<Project[]> {
     const { currentUser } = useFrappeAuth();
-    
+
     // Fetch owned projects
-    const { data: ownedProjects, isLoading: loadingOwned, error: errorOwned } = useFrappeGetDocList('Project', {
+    const { data: ownedProjects, isLoading: loadingOwned, error: errorOwned, mutate: mutateOwned } = useFrappeGetDocList('Project', {
       fields: ProjectService.PROJECT_FIELDS,
       filters: currentUser ? [['owner', '=', currentUser]] : [],
     });
 
     // Fetch all accessible projects as fallback
-    const { data: allProjects, isLoading: loadingAll, error: errorAll } = useFrappeGetDocList('Project', {
+    const { data: allProjects, isLoading: loadingAll, error: errorAll, mutate: mutateAll } = useFrappeGetDocList('Project', {
       fields: ProjectService.PROJECT_FIELDS,
       limit: 0
     });
@@ -103,16 +103,14 @@ export class ProjectService {
     // Filter and combine projects
     const projects: Project[] = React.useMemo(() => {
       if (!currentUser) return [];
-      
-      // Function to group and deduplicate projects from joined data
+
       const deduplicateProjects = (projectList: any[]): any[] => {
         const projectMap = new Map<string, any>();
-        
+
         projectList.forEach(row => {
           const projectName = row.name;
-          
+
           if (!projectMap.has(projectName)) {
-            // Create project object from first row
             const project = {
               name: row.name,
               owner: row.owner,
@@ -131,12 +129,12 @@ export class ProjectService {
             };
             projectMap.set(projectName, project);
           }
-          
+
           // Add user to project if exists
           if (row.user) {
             const existingProject = projectMap.get(projectName)!;
             const userExists = existingProject.users?.some((u: any) => u.user === row.user);
-            
+
             if (!userExists) {
               existingProject.users = existingProject.users || [];
               existingProject.users.push({
@@ -148,45 +146,42 @@ export class ProjectService {
             }
           }
         });
-        
+
         return Array.from(projectMap.values());
       };
-      
-      // If we have owned projects, deduplicate and use them
+
+      let combinedProjects: any[] = [];
+
+      // Gom ownedProjects
       if (ownedProjects && ownedProjects.length > 0) {
-        const deduplicatedOwned = deduplicateProjects(ownedProjects);
-        return deduplicatedOwned;
+        combinedProjects = combinedProjects.concat(ownedProjects);
       }
-      
-      // Filter all projects for user participation
+
+      // Gom allProjects (chỉ lấy những cái user có liên quan)
       if (allProjects && allProjects.length > 0) {
-        const deduplicatedAll = deduplicateProjects(allProjects);
-        
-        // Filter for user participation
-        return deduplicatedAll.filter(project => {
-          // Check if current user is the project owner
-          if (project.owner === currentUser) {
-            return true;
-          }
-          
-          // Check if current user is a project member
-          if (project.users && Array.isArray(project.users)) {
-            const isMember = project.users.some((user: any) => user.user === currentUser);
-            if (isMember) {
-              return true;
-            }
-          }
-          return false;
-        });
+        const related = allProjects.filter(project =>
+          project.owner === currentUser ||
+          (project.user && project.user === currentUser)
+        );
+        combinedProjects = combinedProjects.concat(related);
       }
-      
-      return [];
+
+      // Loại bỏ trùng lặp
+      return deduplicateProjects(combinedProjects);
+
     }, [ownedProjects, allProjects, currentUser]);
+
+    // Combined mutate function to refresh both queries
+    const mutate = React.useCallback(() => {
+      mutateOwned();
+      mutateAll();
+    }, [mutateOwned, mutateAll]);
 
     return {
       data: projects,
       isLoading: loadingOwned || loadingAll,
-      error: errorOwned && errorAll ? (errorOwned || errorAll) : null
+      error: errorOwned && errorAll ? (errorOwned || errorAll) : null,
+      mutate
     };
   }
 
@@ -224,7 +219,7 @@ export class ProjectService {
   // Create new project
   static useCreateProject() {
     const { createDoc, loading, error } = useFrappeCreateDoc();
-    
+
     const createProject = async (projectData: ProjectCreateData) => {
       return await createDoc("Project", {
         ...projectData,
@@ -243,7 +238,7 @@ export class ProjectService {
   // Update project using useFrappeUpdateDoc
   static useUpdateProject() {
     const { updateDoc, loading, error } = useFrappeUpdateDoc();
-    
+
     const updateProject = async (projectName: string, projectData: Partial<ProjectCreateData>) => {
       return await updateDoc("Project", projectName, {
         ...projectData,
@@ -262,7 +257,7 @@ export class ProjectService {
   // Delete project
   static useDeleteProject() {
     const { call: deleteCall, loading, error } = useFrappePostCall('frappe.client.delete');
-    
+
     const deleteProject = async (projectName: string) => {
       return await deleteCall({
         doctype: 'Project',
@@ -366,7 +361,7 @@ export class ProjectService {
         });
 
         const result = await response.json();
-        
+
         if (response.ok && result.message) {
           return { success: true, data: result.message };
         } else {
@@ -382,6 +377,37 @@ export class ProjectService {
       transferOwnerWithAPI
     };
   }
+
+  // Get users in a specific project
+  static useProjectUsers(projectName: string): ProjectServiceResponse<ProjectUser[]> {
+    // Try to get project document with users child table
+    const { data: projectDoc, isLoading, error, mutate } = useFrappeGetDoc('Project', projectName, {
+      fields: ['name', 'users']
+    });
+
+    return {
+      data: projectDoc?.users as ProjectUser[] || [],
+      isLoading,
+      error,
+      mutate
+    };
+  }
+
+  // Alternative method - get users from Project User doctype with try-catch
+  static useProjectUsersAlt(projectName: string): ProjectServiceResponse<ProjectUser[]> {
+    const { data, isLoading, error, mutate } = useFrappeGetDocList('Project User', {
+      fields: ['name', 'user', 'email', 'full_name', 'image'],
+      filters: [['parent', '=', projectName]],
+      limit: 0
+    });
+
+    return {
+      data: data as ProjectUser[] || [],
+      isLoading,
+      error,
+      mutate
+    };
+  }
 }
 
 // React hooks for easier usage
@@ -393,3 +419,4 @@ export const useUpdateProject = ProjectService.useUpdateProject;
 export const useDeleteProject = ProjectService.useDeleteProject;
 export const useProjectMembers = ProjectService.useProjectMembers;
 export const useProjectOwnerManagement = ProjectService.useProjectOwnerManagement;
+// Note: useProjectUsers is now available from projectUsersService.ts

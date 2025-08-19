@@ -1,4 +1,5 @@
-import { useFrappeGetDocList, useFrappeAuth } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappeAuth, useFrappeGetDoc } from 'frappe-react-sdk';
+import type { User } from '@/types/Core/User';
 
 // User Service for managing user-related API calls
 export class UserService {
@@ -30,7 +31,7 @@ export class UserService {
     };
   }
 
-  // Get current user info
+  // Get current user info (basic from auth)
   static useCurrentUser() {
     const { currentUser, isLoading } = useFrappeAuth();
     
@@ -39,8 +40,24 @@ export class UserService {
       isLoading
     };
   }
+
+  // Get current user full profile data
+  static useCurrentUserProfile() {
+    const { currentUser } = useFrappeAuth();
+    
+    const { data, isLoading, error } = useFrappeGetDoc('User', currentUser || undefined, {
+      fields: UserService.USER_FIELDS
+    });
+
+    return {
+      currentUserProfile: data as User | undefined,
+      isLoading,
+      error
+    };
+  }
 }
 
 // Export hooks for easier usage
 export const useUsers = UserService.useUsers;
 export const useCurrentUser = UserService.useCurrentUser;
+export const useCurrentUserProfile = UserService.useCurrentUserProfile;

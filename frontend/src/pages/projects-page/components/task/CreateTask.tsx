@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCreatePhaseTask } from '@/services/phaseTaskService';
+import { useProjectUsers } from '@/services/projectUsersService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,12 +35,16 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     status: 'Open',
     type: 'Task',
     expected_time: 0,
-    task_weight: 1
+    task_weight: 1,
+    assign_to: '' // Added assign_to field
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { createTaskWithPhase, isLoading } = useCreatePhaseTask();
+  
+  // Fetch project users for assignment dropdown
+  const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -80,12 +85,18 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         project: projectName,
         expected_time: Number(formData.expected_time),
         task_weight: Number(formData.task_weight),
-        phaseId: phaseId // Add phaseId to the data object
+        phaseId: phaseId, // Add phaseId to the data object
+        assign_to: formData.assign_to || undefined // Only include if not empty
       };
 
       // Use the service to create task with optional phase
       const result = await createTaskWithPhase(taskData);
       console.log('Task with phase created:', result);
+
+      // Show success message with assignment info
+      if (result.todo && formData.assign_to) {
+        console.log('Task assigned and ToDo created for:', formData.assign_to);
+      }
 
       // Reset form
       setFormData({
@@ -95,7 +106,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         status: 'Open',
         type: 'Task',
         expected_time: 0,
-        task_weight: 1
+        task_weight: 1,
+        assign_to: ''
       });
       setErrors({});
       
@@ -117,7 +129,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
       status: 'Open',
       type: 'Task',
       expected_time: 0,
-      task_weight: 1
+      task_weight: 1,
+      assign_to: ''
     });
     setErrors({});
     onClose();
@@ -139,6 +152,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 <span className="text-blue-600">🔗 This task will be linked to the current phase</span>
               </>
             )}
+            <br />
+            <span className="text-gray-600">💡 Assigning to a user will automatically create a ToDo item for them</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -199,6 +214,34 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                   <option value="Completed">Completed</option>
                 </select>
               </div>
+            </div>
+
+            {/* Assign To Field */}
+            <div className='flex flex-col gap-4'>
+              <Label htmlFor="assign_to">Assign To</Label>
+              <select
+                id="assign_to"
+                value={formData.assign_to}
+                onChange={(e) => handleInputChange('assign_to', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                disabled={usersLoading}
+              >
+                <option value="">Select user to assign (Optional)</option>
+                {projectUsers?.map((projectUser: any) => (
+                  <option key={projectUser.user || projectUser.name} value={projectUser.user || projectUser.name}>
+                    {projectUser.full_name || projectUser.name} 
+                    {projectUser.email && ` (${projectUser.email})`}
+                  </option>
+                ))}
+              </select>
+              {usersLoading && (
+                <p className="text-sm text-gray-500">Loading users...</p>
+              )}
+              {!usersLoading && projectUsers && projectUsers.length > 10 && (
+                <p className="text-sm text-amber-600">
+                  ⚠️ Showing all system users (project users not available)
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
