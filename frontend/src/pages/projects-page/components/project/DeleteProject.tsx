@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useDeleteProject } from '@/services';
+import { useProjectCascadeDelete } from '@/services/projectCascadeDeleteService';
 import type { Project } from '@/types/Projects/Project';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
 interface DeleteProjectProps {
   project: Project | null;
@@ -13,13 +13,31 @@ interface DeleteProjectProps {
 }
 
 const DeleteProject: React.FC<DeleteProjectProps> = ({ project, isOpen, onClose, onSuccess }) => {
-  const { deleteProject, isLoading, error } = useDeleteProject();
+  const { deleteProjectCascade } = useProjectCascadeDelete();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [deletionProgress, setDeletionProgress] = useState<string>('');
 
   const handleDelete = async () => {
     if (!project) return;
 
+    setIsLoading(true);
+    setError(null);
+    setDeletionProgress('Starting deletion...');
+
     try {
-      await deleteProject(project.name);
+      setDeletionProgress('Deleting subtasks...');
+      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UI feedback
+      
+      setDeletionProgress('Deleting tasks and phases...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setDeletionProgress('Deleting project...');
+      const result = await deleteProjectCascade(project.name);
+      
+      setDeletionProgress('Deletion completed successfully!');
+      
+      console.log('Cascade deletion result:', result);
       
       // Call success callback if provided
       if (onSuccess) {
@@ -29,11 +47,19 @@ const DeleteProject: React.FC<DeleteProjectProps> = ({ project, isOpen, onClose,
       onClose();
     } catch (err) {
       console.error('Error deleting project:', err);
+      setError(err instanceof Error ? err : new Error('Failed to delete project'));
+      setDeletionProgress('');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleCancel = () => {
-    onClose();
+    if (!isLoading) {
+      setError(null);
+      setDeletionProgress('');
+      onClose();
+    }
   };
 
   return (
@@ -61,16 +87,35 @@ const DeleteProject: React.FC<DeleteProjectProps> = ({ project, isOpen, onClose,
 
           <div className="bg-red-50 border border-red-200 rounded-md p-3">
             <div className="text-sm text-red-800">
-              <strong>Warning:</strong> Deleting this project will also remove:
+              <strong>Warning:</strong> This will permanently delete in the following order:
             </div>
-            <ul className="text-sm text-red-700 mt-1 ml-4 list-disc">
-              <li>All project tasks and subtasks</li>
+            <ol className="text-sm text-red-700 mt-1 ml-4 list-decimal">
+              <li>All subtasks in all tasks</li>
+              <li>All tasks in the project</li>
               <li>All project phases</li>
-              <li>Project team members</li>
-              <li>Project timesheets and activities</li>
-              <li>All related documents and files</li>
-            </ul>
+              <li>All ToDo assignments</li>
+              <li>All project team members</li>
+              <li>The project itself</li>
+            </ol>
+            <div className="text-sm text-red-800 mt-2">
+              <strong>This action cannot be undone!</strong>
+            </div>
           </div>
+
+          {/* Progress Display */}
+          {isLoading && deletionProgress && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                <span className="text-sm text-blue-800">
+                  <strong>Progress:</strong> {deletionProgress}
+                </span>
+              </div>
+              <div className="text-xs text-blue-600 mt-1">
+                Please wait while we delete all related items...
+              </div>
+            </div>
+          )}
 
           {/* Error Display */}
           {error && (
@@ -81,16 +126,29 @@ const DeleteProject: React.FC<DeleteProjectProps> = ({ project, isOpen, onClose,
         </div>
 
         <DialogFooter className="flex gap-2">
-          <Button type="button" variant="outline" onClick={handleCancel}>
-            Cancel
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleCancel}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Deleting...' : 'Cancel'}
           </Button>
           <Button 
             type="button" 
             variant="destructive" 
             onClick={handleDelete}
             disabled={isLoading}
+            className="min-w-[120px]"
           >
-            {isLoading ? 'Deleting...' : 'Delete Project'}
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Deleting...
+              </div>
+            ) : (
+              'Delete Project'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

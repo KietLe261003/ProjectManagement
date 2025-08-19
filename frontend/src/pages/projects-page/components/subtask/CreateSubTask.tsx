@@ -11,6 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useProjectUsers } from '@/services/projectUsersService';
+import { useSubTaskAssignment } from '@/services/subTaskService';
+import { useTaskProgressCalculation } from '@/services/taskProgressService';
 
 interface CreateSubTaskProps {
   isOpen: boolean;
@@ -32,12 +35,18 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
     description: '',
     priority: 'Medium',
     status: 'Open',
-    task: parentTask || ''
+    task: parentTask || '',
+    assign_to: '' // Added assign_to field
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { createDoc, loading } = useFrappeCreateDoc();
+  const { assignSubTask } = useSubTaskAssignment();
+  const { calculateAndUpdateTaskProgress } = useTaskProgressCalculation();
+  
+  // Fetch project users for assignment dropdown
+  const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -77,10 +86,27 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
     }
 
     try {
-      await createDoc('SubTask', {
-        ...formData,
+      // Prepare subtask data (exclude assign_to as it's not a SubTask field)
+      const { assign_to, ...subTaskData } = formData;
+      
+      const newSubTask = await createDoc('SubTask', {
+        ...subTaskData,
         project: projectName
       });
+
+      // If assign_to is specified, create assignment
+      if (assign_to && newSubTask) {
+        await assignSubTask(newSubTask.name, assign_to);
+      }
+
+      // Cập nhật progress của parent task sau khi tạo subtask mới
+      if (parentTask) {
+        try {
+          await calculateAndUpdateTaskProgress(parentTask);
+        } catch (error) {
+          console.error('Error updating task progress after subtask creation:', error);
+        }
+      }
 
       // Reset form
       setFormData({
@@ -88,7 +114,8 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
         description: '',
         priority: 'Medium',
         status: 'Open',
-        task: parentTask || ''
+        task: parentTask || '',
+        assign_to: ''
       });
       setErrors({});
       
@@ -108,7 +135,8 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
       description: '',
       priority: 'Medium',
       status: 'Open',
-      task: parentTask || ''
+      task: parentTask || '',
+      assign_to: ''
     });
     setErrors({});
     onClose();
@@ -175,6 +203,29 @@ export const CreateSubTask: React.FC<CreateSubTaskProps> = ({
                 rows={3}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
+            </div>
+
+            {/* Assignment */}
+            <div className="space-y-2">
+              <Label htmlFor="assign_to">Assign To</Label>
+              <select
+                id="assign_to"
+                value={formData.assign_to}
+                onChange={(e) => handleInputChange('assign_to', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={usersLoading}
+              >
+                <option value="">Select user...</option>
+                {projectUsers?.map((projectUser) => (
+                  <option 
+                    key={projectUser.name} 
+                    value={projectUser.user || projectUser.name}
+                  >
+                    {projectUser.user || projectUser.name}
+                  </option>
+                ))}
+              </select>
+              {usersLoading && <span className="text-sm text-gray-500">Loading users...</span>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

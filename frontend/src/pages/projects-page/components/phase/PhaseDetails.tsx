@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Calendar, DollarSign, Target, AlertCircle, CheckCircle2, Clock, Plus, Edit, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Calendar, DollarSign, Target, AlertCircle, CheckCircle2, Clock, Plus, Edit, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateTask } from '../task/CreateTask';
 import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
 import EditPhase from './EditPhase';
 import DeletePhase from './DeletePhase';
+import { usePhaseProgressCalculation } from '@/services/phaseProgressService';
 
 interface PhaseDetailsProps {
   phase: any;
@@ -30,6 +31,10 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isEditPhaseOpen, setIsEditPhaseOpen] = useState(false);
   const [isDeletePhaseOpen, setIsDeletePhaseOpen] = useState(false);
+  const [isCalculatingProgress, setIsCalculatingProgress] = useState(false);
+
+  // Hook for phase progress calculation
+  const { calculateAndUpdatePhaseProgress } = usePhaseProgressCalculation();
 
   // Fetch current phase data to get updated phase.tasks
   const { data: currentPhase, mutate: mutatePhase } = useFrappeGetDoc(
@@ -60,6 +65,41 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
     
     return [];
   }, [allTasks, activePhase.tasks]);
+
+  // Calculate phase progress based on task progress
+  const calculatedPhaseProgress = React.useMemo(() => {
+    if (!phaseTasks || phaseTasks.length === 0) return 0;
+    
+    const totalProgress = phaseTasks.reduce((sum: number, task: any) => {
+      return sum + (task.progress || 0);
+    }, 0);
+    
+    return Math.round(totalProgress / phaseTasks.length);
+  }, [phaseTasks]);
+
+  // Auto-update phase progress when tasks change
+  useEffect(() => {
+    if (phaseTasks.length > 0 && calculatedPhaseProgress !== (activePhase.progress || 0)) {
+      handleRecalculateProgress();
+    }
+  }, [calculatedPhaseProgress, phaseTasks.length]);
+
+  // Function to manually recalculate progress
+  const handleRecalculateProgress = async () => {
+    setIsCalculatingProgress(true);
+    try {
+      await calculateAndUpdatePhaseProgress(phase.name);
+      // Refresh phase data
+      await mutatePhase();
+      if (onPhaseUpdated) {
+        onPhaseUpdated();
+      }
+    } catch (error) {
+      console.error('Error recalculating phase progress:', error);
+    } finally {
+      setIsCalculatingProgress(false);
+    }
+  };
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'N/A';
@@ -200,15 +240,41 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
         {/* Progress Bar */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Phase Progress</span>
-            <span className="text-lg font-bold text-blue-600">{activePhase.progress || 0}%</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Phase Progress</span>
+              {phaseTasks.length > 0 && (
+                <span className="text-xs text-gray-500">
+                  (Auto-calculated from {phaseTasks.length} tasks)
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-blue-600">
+                {calculatedPhaseProgress}%
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRecalculateProgress}
+                disabled={isCalculatingProgress}
+                className="h-8 w-8 p-0"
+                title="Recalculate progress from tasks"
+              >
+                <RefreshCw className={`h-4 w-4 ${isCalculatingProgress ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
               className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500"
-              style={{ width: `${activePhase.progress || 0}%` }}
+              style={{ width: `${calculatedPhaseProgress}%` }}
             ></div>
           </div>
+          {phaseTasks.length > 0 && (
+            <div className="mt-2 text-xs text-gray-500">
+              Task progress: {phaseTasks.map(task => `${task.subject}: ${task.progress || 0}%`).join(', ')}
+            </div>
+          )}
         </div>
       </div>
 
@@ -295,9 +361,16 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
                   : 'N/A'}
               </span>
             </div>
-            <div className="flex items-center justify-between py-3 border-b border-gray-100">
+            <div className="flex items-center justify-between py-3">
               <span className="text-gray-600 font-medium">Progress</span>
-              <span className="text-xl font-bold text-blue-600">{activePhase.progress || 0}%</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-blue-600">{calculatedPhaseProgress}%</span>
+                {phaseTasks.length > 0 && (
+                  <span className="text-xs text-gray-500">
+                    (from {phaseTasks.length} tasks)
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-gray-600 font-medium">Estimated Cost</span>
@@ -325,9 +398,10 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
             <div className="bg-gray-50 border-b border-gray-200">
               <div className="grid grid-cols-12 gap-4 px-6 py-3">
                 <div className="col-span-1 text-sm font-medium text-gray-700">#</div>
-                <div className="col-span-5 text-sm font-medium text-gray-700">Task</div>
-                <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Project</div>
+                <div className="col-span-4 text-sm font-medium text-gray-700">Task</div>
+                <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Progress</div>
                 <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Status</div>
+                <div className="col-span-1 text-sm font-medium text-gray-700 text-center">Priority</div>
                 <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Actions</div>
               </div>
             </div>
@@ -340,7 +414,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
                     <div className="col-span-1 flex items-center">
                       <span className="text-sm text-gray-600">{index + 1}</span>
                     </div>
-                    <div className="col-span-5 flex items-center gap-3">
+                    <div className="col-span-4 flex items-center gap-3">
                       <div className="p-1 bg-orange-100 rounded">
                         <span className="text-sm">📝</span>
                       </div>
@@ -350,12 +424,29 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
                       </div>
                     </div>
                     <div className="col-span-2 flex items-center justify-center">
-                      <span className="text-sm text-gray-600">{projectName}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${task.progress || 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 min-w-[30px]">
+                          {task.progress || 0}%
+                        </span>
+                      </div>
                     </div>
                     <div className="col-span-2 flex items-center justify-center">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(task.status || 'Open')}`}>
                         {task.status || 'Open'}
                       </span>
+                    </div>
+                    <div className="col-span-1 flex items-center justify-center">
+                      {task.priority && (
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                      )}
                     </div>
                     <div className="col-span-2 flex items-center justify-center">
                       {onViewTaskDetails && (
@@ -422,6 +513,12 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
           setTimeout(async () => {
             await mutateTasks();
             console.log('Tasks data refreshed');
+            
+            // Recalculate phase progress after tasks are refreshed
+            setTimeout(async () => {
+              console.log('Recalculating phase progress after task creation...');
+              await handleRecalculateProgress();
+            }, 500);
           }, 500);
         }}
       />
@@ -429,6 +526,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
       {/* Edit Phase Dialog */}
       <EditPhase
         phase={phase}
+        projectName={projectName}
         isOpen={isEditPhaseOpen}
         onClose={() => setIsEditPhaseOpen(false)}
         onSuccess={handleEditSuccess}

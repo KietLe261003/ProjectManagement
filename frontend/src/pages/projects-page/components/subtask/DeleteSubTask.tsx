@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useFrappePostCall } from 'frappe-react-sdk';
+import { useTaskProgressCalculation } from '@/services/taskProgressService';
 import { AlertTriangle } from 'lucide-react';
 
 interface DeleteSubTaskProps {
@@ -13,6 +14,7 @@ interface DeleteSubTaskProps {
 
 const DeleteSubTask: React.FC<DeleteSubTaskProps> = ({ subtask, isOpen, onClose, onSuccess }) => {
   const { call: deleteSubTask, loading, error } = useFrappePostCall('frappe.client.delete');
+  const { calculateAndUpdateTaskProgress } = useTaskProgressCalculation();
 
   const handleDelete = async () => {
     if (!subtask) return;
@@ -22,6 +24,15 @@ const DeleteSubTask: React.FC<DeleteSubTaskProps> = ({ subtask, isOpen, onClose,
         doctype: 'SubTask',
         name: subtask.name
       });
+      
+      // Cập nhật progress của parent task sau khi xóa subtask
+      if (subtask.task) {
+        try {
+          await calculateAndUpdateTaskProgress(subtask.task);
+        } catch (error) {
+          console.error('Error updating task progress after subtask deletion:', error);
+        }
+      }
       
       if (onSuccess) {
         onSuccess();

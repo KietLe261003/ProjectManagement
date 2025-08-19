@@ -16,12 +16,12 @@ export interface SubTask{
 	task?: string
 	/**	Status : Select	*/
 	status: "Open" | "Working" | "Completed"
-	/**	Progress : Percent	*/
-	progress?: number
 	/**	Start Date : Date	*/
 	start_date?: string
 	/**	End Date : Date	*/
 	end_date?: string
 	/**	Description : Small Text	*/
 	description?: string
+	/**	Assigned To : Link - User	*/
+	assigned_to?: string
 }

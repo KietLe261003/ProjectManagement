@@ -1,4 +1,4 @@
-import { useFrappeCreateDoc, useFrappePostCall } from 'frappe-react-sdk';
+import { useFrappeCreateDoc, useFrappePostCall, useFrappeGetDoc } from 'frappe-react-sdk';
 
 export interface PhaseTaskData {
   subject: string;
@@ -10,6 +10,7 @@ export interface PhaseTaskData {
   task_weight: number;
   project: string;
   phaseId?: string;
+  assign_to?: string; // Added assign_to field
 }
 
 export interface ProjectPhaseTaskData {
@@ -32,6 +33,9 @@ export class PhaseTaskService {
     const { createDoc, loading: taskLoading } = useFrappeCreateDoc();
     const { call: insertCall } = useFrappePostCall('frappe.client.insert');
     const { call: saveCall } = useFrappePostCall('frappe.client.save');
+    const { data: currentUser } = useFrappeGetDoc('User', '', {
+      shouldFetch: true
+    });
 
     const createTaskWithPhase = async (taskData: PhaseTaskData) => {
       try {
@@ -49,6 +53,30 @@ export class PhaseTaskService {
         });
 
         console.log('Task created successfully:', createdTask);
+
+        // Step 1.5: Create ToDo if assign_to is provided
+        let todoResult = null;
+        if (taskData.assign_to && createdTask) {
+          try {
+            todoResult = await insertCall({
+              doc: {
+                doctype: 'ToDo',
+                allocated_to: taskData.assign_to,
+                assigned_by: currentUser?.name || '',
+                description: `Task: ${taskData.subject}`,
+                reference_type: 'Task',
+                reference_name: createdTask.name,
+                status: 'Open',
+                priority: taskData.priority,
+                date: new Date().toISOString().split('T')[0] // Today's date
+              }
+            });
+            console.log('ToDo created successfully:', todoResult);
+          } catch (todoError) {
+            console.error('Error creating ToDo:', todoError);
+            // Don't fail the entire operation if ToDo creation fails
+          }
+        }
 
         // Step 2: If phaseId is provided, create Project Phase Task
         if (taskData.phaseId && createdTask) {
@@ -92,6 +120,7 @@ export class PhaseTaskService {
             success: true,
             task: createdTask,
             phaseTask: phaseTaskResult,
+            todo: todoResult,
             message: 'Task created and linked to phase successfully'
           };
         }
@@ -99,6 +128,7 @@ export class PhaseTaskService {
         return {
           success: true,
           task: createdTask,
+          todo: todoResult,
           message: 'Task created successfully'
         };
 

@@ -377,6 +377,37 @@ export class ProjectService {
       transferOwnerWithAPI
     };
   }
+
+  // Get users in a specific project
+  static useProjectUsers(projectName: string): ProjectServiceResponse<ProjectUser[]> {
+    // Try to get project document with users child table
+    const { data: projectDoc, isLoading, error, mutate } = useFrappeGetDoc('Project', projectName, {
+      fields: ['name', 'users']
+    });
+
+    return {
+      data: projectDoc?.users as ProjectUser[] || [],
+      isLoading,
+      error,
+      mutate
+    };
+  }
+
+  // Alternative method - get users from Project User doctype with try-catch
+  static useProjectUsersAlt(projectName: string): ProjectServiceResponse<ProjectUser[]> {
+    const { data, isLoading, error, mutate } = useFrappeGetDocList('Project User', {
+      fields: ['name', 'user', 'email', 'full_name', 'image'],
+      filters: [['parent', '=', projectName]],
+      limit: 0
+    });
+
+    return {
+      data: data as ProjectUser[] || [],
+      isLoading,
+      error,
+      mutate
+    };
+  }
 }
 
 // React hooks for easier usage
@@ -388,3 +419,4 @@ export const useUpdateProject = ProjectService.useUpdateProject;
 export const useDeleteProject = ProjectService.useDeleteProject;
 export const useProjectMembers = ProjectService.useProjectMembers;
 export const useProjectOwnerManagement = ProjectService.useProjectOwnerManagement;
+// Note: useProjectUsers is now available from projectUsersService.ts

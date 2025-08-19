@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { ArrowLeft, Calendar, Target, AlertCircle, CheckCircle2, Clock, User, Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateSubTask } from '../subtask/CreateSubTask';
-import { useFrappeGetDocList } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
 import EditTask from './EditTask';
 import DeleteTask from './DeleteTask';
+import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate';
+import { useTaskProgressCalculation } from '@/services/taskProgressService';
 
 interface TaskDetailsProps {
   task: any;
@@ -27,11 +29,30 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
   const [isDeleteTaskOpen, setIsDeleteTaskOpen] = useState(false);
 
+  // Hook for updating phase progress when task changes
+  const { updatePhaseProgressForTask } = useProjectProgressUpdate();
+  
+  // Hook for updating task progress when subtasks change
+  const { calculateAndUpdateTaskProgress } = useTaskProgressCalculation();
+
   // Fetch subtasks for this task
   const { data: taskSubTasks, isLoading: subtasksLoading, mutate: mutateSubTasks } = useFrappeGetDocList('SubTask', {
     fields: ['name', 'subject', 'task', 'status', 'progress', 'start_date', 'end_date', 'description'],
     filters: [['task', '=', task.name]],
     orderBy: { field: 'start_date', order: 'asc' }
+  });
+
+  // Fetch assignment information for this task
+  const { data: taskAssignment } = useFrappeGetDocList('ToDo', {
+    fields: ['name', 'allocated_to', 'status'],
+    filters: [['reference_type', '=', 'Task'], ['reference_name', '=', task.name]],
+    limit: 1
+  });
+
+  // Get assigned user info if available
+  const assignedUser = taskAssignment && taskAssignment.length > 0 ? taskAssignment[0].allocated_to : null;
+  const { data: userInfo } = useFrappeGetDoc('User', assignedUser || undefined, {
+    fields: ['name', 'full_name', 'email', 'user_image']
   });
 
   const formatDate = (dateString?: string | null) => {
@@ -84,13 +105,31 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
     if (onTaskUpdated) {
       onTaskUpdated();
     }
+    // Update phase progress when task is updated
+    updatePhaseProgressForTask(task.name, projectName).catch(console.error);
   };
 
   const handleDeleteSuccess = () => {
     if (onTaskDeleted) {
       onTaskDeleted();
     }
+    // Update phase progress when task is deleted
+    updatePhaseProgressForTask(task.name, projectName).catch(console.error);
     onBack(); // Navigate back after deletion
+  };
+
+  // Component riêng cho SubTask Assignment để tránh vi phạm Rules of Hooks
+  const SubTaskAssignment: React.FC<{ subtask: any }> = ({ subtask }) => {
+    const { data: assignmentData } = useFrappeGetDocList('ToDo', {
+      fields: ['name', 'allocated_to'],
+      filters: [['reference_type', '=', 'SubTask'], ['reference_name', '=', subtask?.name || '']],
+    });
+    const assignedUser = assignmentData?.[0]?.allocated_to;
+    return (
+      <div className="flex items-center gap-2">
+        <span>{assignedUser}</span>
+      </div>
+    );
   };
 
   return (
@@ -208,9 +247,20 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
             <div className="p-3 bg-green-100 rounded-lg">
               <User className="h-6 w-6 text-green-600" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-medium text-green-600 uppercase tracking-wide">Assigned To</p>
-              <p className="text-lg font-bold text-gray-900">{task.owner || 'Unassigned'}</p>
+              {taskAssignment && taskAssignment.length > 0 ? (
+                <div>
+                  <p className="text-lg font-bold text-gray-900">
+                    {userInfo?.full_name || assignedUser}
+                  </p>
+                  {userInfo?.email && (
+                    <p className="text-sm text-gray-600">{userInfo.email}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-lg font-bold text-gray-900">Unassigned</p>
+              )}
             </div>
           </div>
         </div>
@@ -266,7 +316,15 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
             </div>
             <div className="flex items-center justify-between py-3">
               <span className="text-gray-600 font-medium">Assigned To</span>
-              <span className="text-lg font-semibold text-green-600">{task.owner || 'Unassigned'}</span>
+              {taskAssignment && taskAssignment.length > 0 ? (
+                <div>
+                  <p className="text-lg font-bold text-gray-900">
+                    {userInfo?.full_name || assignedUser}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-lg font-bold text-gray-900">Unassigned</p>
+              )}
             </div>
           </div>
         </div>
@@ -292,7 +350,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
                 <div className="col-span-1 text-sm font-medium text-gray-700">#</div>
                 <div className="col-span-5 text-sm font-medium text-gray-700">SubTask</div>
                 <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Status</div>
-                <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Progress</div>
+                <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Assign To</div>
                 <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Actions</div>
               </div>
             </div>
@@ -320,15 +378,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
                       </span>
                     </div>
                     <div className="col-span-2 flex items-center justify-center">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-green-500 h-2 rounded-full"
-                            style={{ width: `${subtask.progress || 0}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-medium">{subtask.progress || 0}%</span>
-                      </div>
+                      <SubTaskAssignment subtask={subtask} />
                     </div>
                     <div className="col-span-2 flex items-center justify-center">
                       {onViewSubTaskDetails && (
@@ -377,15 +427,28 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
         onClose={() => setIsCreateSubTaskModalOpen(false)}
         projectName={projectName}
         parentTask={task.name}
-        onSuccess={() => {
+        onSuccess={async () => {
           console.log('SubTask created successfully for task:', task.name);
           mutateSubTasks(); // Refresh subtasks data
+          
+          // Recalculate task progress based on subtasks
+          setTimeout(async () => {
+            console.log('Recalculating task progress after subtask creation...');
+            await calculateAndUpdateTaskProgress(task.name);
+            
+            // Then update phase progress
+            setTimeout(async () => {
+              console.log('Updating phase progress after task progress update...');
+              await updatePhaseProgressForTask(task.name, projectName);
+            }, 500);
+          }, 500);
         }}
       />
 
       {/* Edit Task Dialog */}
       <EditTask
         task={task}
+        projectName={projectName}
         isOpen={isEditTaskOpen}
         onClose={() => setIsEditTaskOpen(false)}
         onSuccess={handleEditSuccess}
