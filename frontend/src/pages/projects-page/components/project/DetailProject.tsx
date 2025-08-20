@@ -106,6 +106,19 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     project?.owner ? undefined : null // Only fetch if owner exists
   );
 
+  // Fetch subtask data for refresh after update
+  const { data: subtaskData, mutate: refreshSubTask } = useFrappeGetDoc(
+    "SubTask",
+    selectedSubTask?.name || "",
+    selectedSubTask?.name ? undefined : null
+  );
+
+  // Fetch task data for refresh after update
+  const { data: taskData, mutate: refreshTask } = useFrappeGetDoc(
+    "Task",
+    selectedTask?.name || "",
+    selectedTask?.name ? undefined : null
+  );
 
   // Get current user to check permissions
   const { currentUser } = useFrappeAuth();
@@ -159,6 +172,49 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
       setIsCalculatingProgress(false);
     }
   };
+
+  // Function to refresh subtask data after update
+  const handleRefreshSubTask = async () => {
+    if (selectedSubTask?.name) {
+      try {
+        await refreshSubTask();
+      } catch (error) {
+        console.error('Error refreshing subtask data:', error);
+      }
+    }
+  };
+
+  // Function to refresh task data after update
+  const handleRefreshTask = async () => {
+    if (selectedTask?.name) {
+      try {
+        await refreshTask();
+      } catch (error) {
+        console.error('Error refreshing task data:', error);
+      }
+    }
+  };
+
+  // Function to refresh task by task name (for when subtask updates affect parent task)
+  const handleRefreshTaskByName = async (taskName: string) => {
+    if (selectedTask?.name === taskName) {
+      await handleRefreshTask();
+    }
+  };
+
+  // Auto-update selectedSubTask when subtaskData changes
+  useEffect(() => {
+    if (subtaskData && selectedSubTask?.name === subtaskData.name) {
+      setSelectedSubTask(subtaskData);
+    }
+  }, [subtaskData, selectedSubTask?.name]);
+
+  // Auto-update selectedTask when taskData changes
+  useEffect(() => {
+    if (taskData && selectedTask?.name === taskData.name) {
+      setSelectedTask(taskData);
+    }
+  }, [taskData, selectedTask?.name]);
 
   // Auto-update project progress when phases or tasks change
   useEffect(() => {
@@ -1029,6 +1085,8 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   onTaskUpdated={async () => {
                     // Refresh project data when task is updated
                     refreshProject();
+                    // Refresh task data to show updated information
+                    await handleRefreshTask();
                     // Also recalculate project progress
                     setTimeout(async () => {
                       await handleRecalculateProgress();
@@ -1057,6 +1115,12 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   onSubTaskUpdated={async () => {
                     // Refresh project data when subtask is updated
                     refreshProject();
+                    // Refresh subtask data to show updated information
+                    await handleRefreshSubTask();
+                    // Refresh parent task data to update task progress
+                    if (selectedSubTask?.task) {
+                      await handleRefreshTaskByName(selectedSubTask.task);
+                    }
                     // Also recalculate project progress
                     setTimeout(async () => {
                       await handleRecalculateProgress();

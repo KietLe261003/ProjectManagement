@@ -91,7 +91,6 @@ export const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, projectName, 
         // Create new assignment
         await assignSubTask(subtask.name, newAssignment);
       }
-      console.log(subTaskData," ",subtask.status)
       // Update parent task progress if subtask status changed
       if (subtask.task && subTaskData.status !== subtask.status) {
         await calculateAndUpdateTaskProgress(subtask.task);

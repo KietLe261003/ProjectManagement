@@ -47,7 +47,6 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
   };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Completed':
@@ -60,7 +59,6 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
         return <AlertCircle className="h-5 w-5 text-gray-400" />;
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Completed':
