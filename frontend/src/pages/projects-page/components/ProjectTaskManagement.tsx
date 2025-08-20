@@ -41,7 +41,9 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
             const response = await fetch(`/api/resource/project_phase/${phase.name}`, {
               headers: {
                 'Accept': 'application/json',
-              }
+                'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
+              },
+              credentials: 'include'
             });
             
             if (response.ok) {
