@@ -26,7 +26,9 @@ const DeleteTask: React.FC<DeleteTaskProps> = ({ task, isOpen, onClose, onSucces
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
         },
+        credentials: 'include',
         body: JSON.stringify({
           doctype: 'SubTask',
           fields: ['name'],
@@ -53,7 +55,9 @@ const DeleteTask: React.FC<DeleteTaskProps> = ({ task, isOpen, onClose, onSucces
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+            'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
           },
+          credentials: 'include',
           body: JSON.stringify({
             doctype: 'project_phase',
             fields: ['name', 'subject', 'status', 'priority', 'start_date', 'end_date', 'progress', 'details', 'costing'],

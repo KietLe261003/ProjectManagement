@@ -13,7 +13,9 @@ export class ProjectProgressService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+            'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
           },
+          credentials: 'include',
           body: JSON.stringify({
             doctype: 'project_phase',
             fields: ['name', 'progress'],
@@ -70,7 +72,9 @@ export class ProjectProgressService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+            'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
           },
+          credentials: 'include',
           body: JSON.stringify({
             doctype: 'Task',
             fields: ['name', 'progress'],
@@ -130,7 +134,9 @@ export class ProjectProgressService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+            'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
           },
+          credentials: 'include',
           body: JSON.stringify({
             doctype: 'project_phase',
             fields: ['name', 'progress'],
@@ -167,7 +173,9 @@ export class ProjectProgressService {
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
+              'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
             },
+            credentials: 'include',
             body: JSON.stringify({
               doctype: 'Task',
               fields: ['name', 'progress'],
