@@ -1,11 +1,59 @@
 import React from 'react';
-import { Bell, Search, Menu, User } from 'lucide-react';
+import { Bell, Search, Menu, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useCurrentUser, useCurrentUserProfile } from '@/services/userService';
+import { useFrappeAuth } from 'frappe-react-sdk';
 
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+  const { currentUser, isLoading } = useCurrentUser();
+  const { currentUserProfile } = useCurrentUserProfile();
+  const { logout } = useFrappeAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Optionally redirect to login page
+      window.location.href = 'http://localhost:8007/login';
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const getUserDisplayName = () => {
+    if (currentUserProfile) {
+      return currentUserProfile.full_name || currentUserProfile.first_name || currentUserProfile.email || 'User';
+    }
+    if (!currentUser || typeof currentUser === 'string') return currentUser || 'Guest';
+    return (currentUser as any).full_name || (currentUser as any).first_name || (currentUser as any).email || 'User';
+  };
+
+  const getUserInitials = () => {
+    if (!currentUser) return 'G';
+    const name = getUserDisplayName();
+    return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const getUserAvatar = () => {
+    if (currentUserProfile?.user_image) {
+      return currentUserProfile.user_image;
+    }
+    return null;
+  };
+
+  const getUserEmail = () => {
+    if (currentUserProfile) {
+      return currentUserProfile.email;
+    }
+    if (currentUser && typeof currentUser !== 'string') {
+      return (currentUser as any).email;
+    }
+    return currentUser || 'No email';
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between h-16 px-6">
@@ -41,12 +89,67 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
           {/* Profile dropdown */}
           <div className="relative">
-            <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 text-white" />
-              </div>
-              <span className="hidden md:block text-sm font-medium text-gray-700">Administrator</span>
-            </button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                    {getUserAvatar() ? (
+                      <img 
+                        src={getUserAvatar()!} 
+                        alt="User avatar" 
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs font-medium text-white">
+                        {getUserInitials()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="hidden md:block text-sm font-medium text-gray-700">
+                    {isLoading ? 'Loading...' : getUserDisplayName()}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0" align="end">
+                <div className="p-4 border-b border-gray-100">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                      {getUserAvatar() ? (
+                        <img 
+                          src={getUserAvatar()!} 
+                          alt="User avatar" 
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-medium text-white">
+                          {getUserInitials()}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{getUserDisplayName()}</p>
+                      <p className="text-sm text-gray-500">
+                        {getUserEmail()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-2">
+                  <button className="w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                    <Settings className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-700">Settings</span>
+                  </button>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg hover:bg-red-50 transition-colors duration-200 text-red-600"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="text-sm">Sign out</span>
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>

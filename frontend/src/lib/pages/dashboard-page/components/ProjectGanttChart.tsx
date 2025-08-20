@@ -26,8 +26,8 @@ export const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projects, 
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [timeView, setTimeView] = useState<'week' | 'month' | 'quarter'>('month');
 
-  console.log('Gantt tasks:', tasks);
-  console.log('Gantt projects:', projects);
+  // console.log('Gantt tasks:', tasks);
+  // console.log('Gantt projects:', projects);
 
   // Chuyển đổi dữ liệu tasks thành định dạng Gantt
   const ganttTasks = useMemo((): GanttTask[] => {
@@ -36,7 +36,7 @@ export const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projects, 
     // console.log('Filtered tasks:', filteredTasks);
     
     return filteredTasks.map(task => {
-      console.log('Processing task:', task);
+      // console.log('Processing task:', task);
       const startDate = new Date(task.exp_start_date || Date.now());
       const endDate = new Date(task.exp_end_date || Date.now());
       const today = new Date();

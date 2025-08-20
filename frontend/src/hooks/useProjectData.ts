@@ -1,13 +1,17 @@
-import { useState, useMemo } from 'react';
-import { useFrappeGetDocList } from 'frappe-react-sdk';
-import type { FilteredData, Project,Task,Timesheet } from '../types';
+import { useState, useMemo, useEffect } from 'react';
+import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
+import type { FilteredData, Project, Phase, Task, Timesheet } from '../types';
 
 export const useProjectData = () => {
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
+  
+  // State cho phases với tasks
+  const [phasesWithTasks, setPhasesWithTasks] = useState<any[]>([]);
+  const [phasesTasksLoading, setPhasesTasksLoading] = useState(false);
 
-  // Fetch Projects from API - bỏ limit để lấy tất cả projects
+  // Fetch Projects from API
   const { 
     data: projectsData, 
     isLoading: projectsLoading,
@@ -23,33 +27,98 @@ export const useProjectData = () => {
       'expected_end_date',
       'percent_complete',
     ]
-    // Bỏ limit để lấy tất cả projects
   });
-  // console.log('Projects data:', projectsData);
-  // console.log('Projects error:', projectsError);
 
-  // Fetch Tasks from API - bỏ limit để lấy tất cả tasks
+  // Fetch Phase list để lấy names
+  const { 
+    data: phasesListData, 
+    isLoading: phasesLoading,
+    error: phasesError
+  } = useFrappeGetDocList<any>('project_phase', {
+    fields: ['name'] // Chỉ cần name để fetch từng doc riêng
+  });
+
+  // Fetch từng Phase document riêng lẻ để lấy child tables
+  useEffect(() => {
+    const fetchPhasesWithTasks = async () => {
+      if (!phasesListData || phasesListData.length === 0) {
+        setPhasesWithTasks([]);
+        return;
+      }
+
+      setPhasesTasksLoading(true);
+      console.log('🔄 Fetching individual phase documents for tasks...');
+
+      try {
+        const phasesWithTasksPromises = phasesListData.map(async (phaseItem: any) => {
+          try {
+            // Fetch full document với useFrappeGetDoc
+            const response = await fetch(`/api/resource/project_phase/${phaseItem.name}`, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+              }
+            });
+
+            if (!response.ok) {
+              console.warn(`❌ Failed to fetch phase ${phaseItem.name}:`, response.status);
+              return null;
+            }
+
+            const result = await response.json();
+            const fullPhase = result.data || result;
+            
+            console.log(`✅ Phase ${phaseItem.name} full data:`, fullPhase);
+            console.log(`📋 Phase ${phaseItem.name} tasks:`, fullPhase.tasks);
+            
+            return fullPhase;
+          } catch (error) {
+            console.error(`💥 Error fetching phase ${phaseItem.name}:`, error);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(phasesWithTasksPromises);
+        const validPhases = results.filter(phase => phase !== null);
+        
+        console.log('🎉 All phases with tasks loaded:', validPhases);
+        setPhasesWithTasks(validPhases);
+      } catch (error) {
+        console.error('💥 Error in fetchPhasesWithTasks:', error);
+      } finally {
+        setPhasesTasksLoading(false);
+      }
+    };
+
+    fetchPhasesWithTasks();
+  }, [phasesListData]);
+
+  // Fetch Tasks from API
   const { 
     data: tasksData, 
     isLoading: tasksLoading,
     error: tasksError
   } = useFrappeGetDocList<Task>('Task', {
-    fields: ['name', 'subject', 'status','exp_end_date',"exp_start_date",'project',
-      'progress','priority','is_group',
+    fields: [
+      'name', 
+      'subject', 
+      'status',
+      'exp_end_date',
+      "exp_start_date",
+      'project',
+      'progress',
+      'priority','is_group',
     ]
   });
 
-  // Log để debug
-  console.log('Tasks data:', tasksData);
-  // console.log('Tasks error:', tasksError);
-
-  // Fetch Timesheets from API - bỏ limit
+  // Fetch Timesheets from API
   const { 
     data: timesheetsData, 
     isLoading: timesheetsLoading 
   } = useFrappeGetDocList<Timesheet>('Timesheet', {
     fields: ['name', 'total_hours']
   });
+
   // Process API data with default values
   const allProjects = (projectsData || []).map(project => ({
     ...project,
@@ -73,11 +142,38 @@ export const useProjectData = () => {
     is_active: project.is_active ?? true
   }));
 
+  // Process phases data từ phasesWithTasks (đã có full data including tasks)
+  const allPhases = useMemo(() => {
+    if (!phasesWithTasks || phasesWithTasks.length === 0) return [];
+    
+    return phasesWithTasks.map((phase: any) => {
+      // Phase đã có full data bao gồm tasks
+      const phaseTasks = phase.tasks || [];
+      
+      console.log(`📊 Processing Phase ${phase.name} with ${phaseTasks.length} tasks:`, phaseTasks);
+      
+      return {
+        ...phase,
+        phase_name: phase.subject || phase.name || '',
+        status: phase.status || 'Open',
+        expected_start_date: phase.start_date || '',
+        expected_end_date: phase.end_date || '',
+        actual_start_date: phase.start_date || '',
+        actual_end_date: null,
+        progress: phase.progress || 0,
+        description: phase.details || '',
+        tasks: phaseTasks // Tasks từ full document fetch
+      };
+    });
+  }, [phasesWithTasks]);
+
+  // console.log('Final processed phases with tasks:', allPhases);
+
   const allTasks = (tasksData || []).map(task => ({
     ...task,
-    project: task.project || '', // Set default for missing field
-    priority: task.priority || 'Medium', // Set default for missing field
-    type: task.type || '', // Set default for missing field
+    project: task.project || '', 
+    priority: task.priority || 'Medium', 
+    type: task.type || '', 
     expected_time: task.expected_time || 0,
     actual_time: task.actual_time || 0,
     start_date: task.exp_start_date || '',
@@ -88,13 +184,11 @@ export const useProjectData = () => {
     parent_task_name: task.parent_task_name || null
   }));
 
-  console.log('All tasks after processing:', allTasks);
-
   const allTimesheets = (timesheetsData || []).map(timesheet => ({
     name: timesheet.name,
     employee: timesheet.employee || '',
-    project: '', // Set empty for now
-    task: '', // Set empty for now
+    project: '', 
+    task: '', 
     start_date: timesheet.start_date || '',
     end_date: timesheet.end_date || '',
     total_hours: timesheet.total_hours || 0,
@@ -104,8 +198,8 @@ export const useProjectData = () => {
     billing_amount: 0
   }));
   
-  // Loading state - true if any API call is still loading
-  const isLoading = projectsLoading || tasksLoading || timesheetsLoading;
+  // Loading state - bao gồm cả phasesTasksLoading
+  const isLoading = projectsLoading || phasesLoading || phasesTasksLoading || tasksLoading || timesheetsLoading;
 
   const filteredData: FilteredData = useMemo(() => {
     let projects = allProjects;
@@ -128,29 +222,28 @@ export const useProjectData = () => {
     const projectNames = projects.map(p => p.project_name);
     const projectCodes = projects.map(p => p.name); // PROJ-0001, PROJ-0002, etc.
     
-    console.log('Project names for filtering:', projectNames);
-    console.log('Project codes for filtering:', projectCodes);
-    console.log('All tasks before filtering:', allTasks);
-    console.log('Tasks projects:', allTasks.map(t => t.project));
+    // Filter phases based on selected projects
+    const phases = allPhases.filter((phase: any) => {
+      return projectCodes.includes(phase.project);
+    });
     
     return {
       filteredProjects: projects,
+      filteredPhases: phases,
       filteredTasks: allTasks.filter(t => {
         const taskProject = t.project || '';
-        // Filter theo project code (PROJ-0001) thay vì project name
         const isIncluded = projectCodes.includes(taskProject);
-        console.log(`Task ${t.name} project "${taskProject}" included:`, isIncluded);
         return isIncluded;
       }),
       filteredTimesheets: allTimesheets.filter(ts => {
-        // For now, include all timesheets since project field may not be directly available
-        // In a real implementation, you might need to fetch project from time_logs child table
         return ts.project ? projectNames.includes(ts.project) : true;
       }),
     };
-  }, [allProjects, allTasks, allTimesheets, selectedProject, selectedDepartment, selectedTeam]);
+  }, [allProjects, allPhases, allTasks, allTimesheets, selectedProject, selectedDepartment, selectedTeam]);
+  
   return {
     allProjects,
+    allPhases,
     filteredData,
     selectedProject,
     selectedDepartment,

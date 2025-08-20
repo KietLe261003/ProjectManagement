@@ -14,6 +14,7 @@ import { LoadingSpinner } from '../../../components/LoadingSpinner';
 export const Dashboard: React.FC = () => {
   const { 
     allProjects, 
+    allPhases,
     filteredData, 
     selectedProject, 
     selectedDepartment,
@@ -45,7 +46,7 @@ export const Dashboard: React.FC = () => {
       </div>
     );
   }
-  console.log("Testing",);
+  // console.log("Testing",);
 
   return (
     <div className="space-y-6">
@@ -72,7 +73,6 @@ export const Dashboard: React.FC = () => {
           projects={filteredData.filteredProjects}
         />
 
-        
 
         <ProjectMilestonesTeam 
           projects={filteredData.filteredProjects}
@@ -86,6 +86,7 @@ export const Dashboard: React.FC = () => {
         />
         <TaskManagement
           projects={filteredData.filteredProjects}
+          phases={filteredData.filteredPhases}
           tasks={filteredData.filteredTasks}
         />
 

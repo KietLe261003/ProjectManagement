@@ -10,7 +10,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import type { Project, Task } from '../types';
+import type { Project, Phase, Task } from '../types';
 import { Card } from './Card';
 import { MetricCard } from './MetricCard';
 import { StatusBadge } from './StatusBadge';
@@ -27,20 +27,17 @@ ChartJS.register(
 
 interface TaskManagementProps {
   projects: Project[];
+  phases: Phase[];
   tasks: Task[];
 }
 
-export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks }) => {
+export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases, tasks }) => {
   // Initialize all projects as expanded by default
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set(projects.map(p => p.name))
   );
   
-  
-  //console.log('projects1111', projects);
-
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   
   const inProgressTasks = tasks.filter(t => t.status === 'Working').length;
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
@@ -65,16 +62,6 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks 
     setExpandedPhases(newExpanded);
   };
 
-  const toggleTask = (taskKey: string) => {
-    const newExpanded = new Set(expandedTasks);
-    if (newExpanded.has(taskKey)) {
-      newExpanded.delete(taskKey);
-    } else {
-      newExpanded.add(taskKey);
-    }
-    setExpandedTasks(newExpanded);
-  };
-
   // Dữ liệu cho biểu đồ trạng thái nhiệm vụ
   const taskStatusCounts = tasks.reduce((acc, t) => {
     acc[t.status] = (acc[t.status] || 0) + 1;
@@ -86,8 +73,8 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks 
     datasets: [{
       label: 'Số lượng nhiệm vụ',
       data: Object.values(taskStatusCounts),
-      backgroundColor: ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f'],
-      borderColor: ['#2980b9', '#27ae60', '#c0392b', '#f39c12'],
+      backgroundColor: [  '#70767eff','#3498db','#2ecc71', '#f1c40f'],
+      borderColor: ['#70767eff', '#3498db', '#2ecc71', '#f39c12'],
       borderWidth: 1
     }]
   };
@@ -140,50 +127,28 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks 
     }
   };
 
-  // Render task tree
-  const renderTaskItem = (task: Task, level: number, projectName: string, allTasks: Task[]) => {
+  // Helper function to get tasks for a specific phase
+  const getTasksForPhase = (phaseName: string): Task[] => {
+    const phase = phases.find(p => p.name === phaseName);
+    if (!phase || !phase.tasks) return [];
+    
+    const phaseTaskNames = phase.tasks.map(pt => pt.task);
+    return tasks.filter(task => phaseTaskNames.includes(task.name));
+  };
+
+  // Helper function to get phases for a project
+  const getPhasesForProject = (projectName: string): Phase[] => {
+    return phases.filter(phase => phase.project === projectName);
+  };
+
+  // Render task item within a phase
+  const renderTaskInPhase = (task: Task, level: number = 1): React.ReactNode => {
     const indentClass = level > 0 ? `pl-${level * 6}` : '';
-    const phaseKey = `${projectName}-${task.subject}`;
-    const taskKey = `${projectName}-${task.subject}-task`;
-    const isPhaseExpanded = expandedPhases.has(phaseKey);
-    const isTaskExpanded = expandedTasks.has(taskKey);
     
-    // Check if this task has children (subtasks)
-    const hasChildren = allTasks.some(t => t.parent_task_name === task.subject);
-    
-    let icon = '';
-    let isClickable = false;
-    
-    if (task.is_group) {
-      icon = isPhaseExpanded ? '▼' : '▶️'; // Mũi tên xuống/phải cho giai đoạn
-      isClickable = true;
-    } else if (hasChildren && !task.parent_task_name) {
-      // Nhiệm vụ chính có nhiệm vụ con
-      icon = isTaskExpanded ? '▼' : '▶️';
-      isClickable = true;
-    } else if (task.parent_task_name) {
-      icon = '•'; // Dấu chấm cho nhiệm vụ con
-    } else {
-      icon = '●'; // Dấu chấm tròn cho nhiệm vụ đơn lẻ
-    }
-
-    const handleClick = () => {
-      if (task.is_group) {
-        togglePhase(phaseKey);
-      } else if (hasChildren && !task.parent_task_name) {
-        toggleTask(taskKey);
-      }
-    };
-
     return (
       <div key={task.name} className={`flex items-center py-2 ${indentClass} border-b border-gray-100 last:border-b-0`}>
         <div className="flex-grow flex items-center">
-          <span 
-            className={`mr-2 ${isClickable ? 'text-blue-600 cursor-pointer hover:text-blue-800' : 'text-blue-600'}`}
-            onClick={isClickable ? handleClick : undefined}
-          >
-            {icon}
-          </span>
+          <span className="mr-2 text-blue-600">●</span>
           <span className="font-medium text-gray-800">{task.subject}</span>
         </div>
         <div className="w-32 text-sm text-gray-600">{task.assigned_to || 'Chưa giao'}</div>
@@ -198,46 +163,40 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks 
     );
   };
 
-  const buildTaskTree = (allTasks: Task[], projectName: string, parentSubject: string | null = null, level: number = 0): React.ReactNode[] => {
-    const children = allTasks.filter(task => task.parent_task_name === parentSubject);
-    const sortedChildren = children.sort((a, b) => {
-      if (a.is_group && !b.is_group) return -1;
-      if (!a.is_group && b.is_group) return 1;
-      return a.subject.localeCompare(b.subject);
-    });
-
-    const result: React.ReactNode[] = [];
-    sortedChildren.forEach(childTask => {
-      result.push(renderTaskItem(childTask, level, projectName, allTasks));
-      
-      // Determine what controls the expansion of children
-      const phaseKey = `${projectName}-${childTask.subject}`;
-      const taskKey = `${projectName}-${childTask.subject}-task`;
-      
-      let shouldShowChildren = false;
-      
-      if (childTask.is_group) {
-        // For group tasks (phases), check phase expansion
-        shouldShowChildren = expandedPhases.has(phaseKey);
-      } else if (!childTask.parent_task_name) {
-        // For main tasks that have children, check task expansion
-        const hasChildren = allTasks.some(t => t.parent_task_name === childTask.subject);
-        shouldShowChildren = hasChildren ? expandedTasks.has(taskKey) : false;
-      } else {
-        // For subtasks, always show if we reach this point
-        shouldShowChildren = true;
-      }
-      
-      if (shouldShowChildren) {
-        result.push(...buildTaskTree(allTasks, projectName, childTask.subject, level + 1));
-      }
-    });
+  // Render phase with its tasks
+  const renderPhase = (phase: Phase, projectName: string): React.ReactNode => {
+    const phaseKey = `${projectName}-${phase.name}`;
+    const isPhaseExpanded = expandedPhases.has(phaseKey);
+    const phaseTasks = getTasksForPhase(phase.name);
     
-    return result;
+    return (
+      <div key={phase.name} className="ml-4">
+        <div 
+          className="bg-green-500 text-white p-2 rounded-t-lg font-medium text-md cursor-pointer hover:bg-green-600 flex items-center justify-between"
+          onClick={() => togglePhase(phaseKey)}
+        >
+          <span>Giai đoạn: {phase.phase_name} ({phase.status})</span>
+          <span className="text-lg">
+            {isPhaseExpanded ? '▼' : '▶️'}
+          </span>
+        </div>
+        {isPhaseExpanded && (
+          <div className="bg-white border-l-2 border-r-2 border-b-2 border-gray-200 p-3">
+            {phaseTasks.length > 0 ? (
+              phaseTasks.map(task => renderTaskInPhase(task))
+            ) : (
+              <div className="text-gray-500 text-center py-2 text-sm">
+                Chưa có nhiệm vụ nào cho giai đoạn này.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
-    <Card title="Quản lý nhiệm vụ">
+    <Card title="Quản lý nhiệm vụ (Task)">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <MetricCard 
           value={inProgressTasks} 
@@ -262,10 +221,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks 
       <h3 className="text-xl font-semibold mt-8 mb-4 text-gray-700">Danh sách nhiệm vụ</h3>
       <div className="space-y-4">
         {projects.map(project => {
-          const tasksForProject = tasks.filter(t => t.project === project.name);
-          
-          if (tasksForProject.length === 0) return null;
-          
+          const projectPhases = getPhasesForProject(project.name);
           const isProjectExpanded = expandedProjects.has(project.name);
           
           return (
@@ -281,10 +237,11 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks 
               </div>
               {isProjectExpanded && (
                 <div className="bg-white rounded-b-lg border border-gray-200 p-4">
-                  {buildTaskTree(tasksForProject, project.name)}
-                  {tasksForProject.length === 0 && (
+                  {projectPhases.length > 0 ? (
+                    projectPhases.map(phase => renderPhase(phase, project.name))
+                  ) : (
                     <div className="text-gray-500 text-center py-4">
-                      Chưa có nhiệm vụ nào cho dự án này.
+                      Chưa có giai đoạn nào cho dự án này.
                     </div>
                   )}
                 </div>

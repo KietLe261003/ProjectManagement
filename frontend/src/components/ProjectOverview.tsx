@@ -22,7 +22,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects }) =>
   const [summaryText, setSummaryText] = useState<string>('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
-  // Phân loại dự án theo trạng thái và tỷ lệ hoàn thành
+  // Phân loại dự án theo 3 trạng thái chính: Open/Completed/Cancelled
   const categorizeProjects = () => {
     const categories: {
       [key: string]: {
@@ -31,29 +31,19 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects }) =>
         label: string;
       }
     } = {
-      completed: { projects: [], color: '#22c55e', label: 'Hoàn thành' },
-      active: { projects: [], color: '#3b82f6', label: 'Đang hoạt động' },
-      overdue: { projects: [], color: '#ef4444', label: 'Quá hạn' },
-      paused: { projects: [], color: '#f59e0b', label: 'Tạm dừng' },
-      cancelled: { projects: [], color: '#6b7280', label: 'Đã hủy' }
+      open: { projects: [], color: '#3b82f6', label: 'Đang mở (Open)' },
+      completed: { projects: [], color: '#22c55e', label: 'Hoàn thành (Completed)' },
+      cancelled: { projects: [], color: '#ef4444', label: 'Đã hủy (Cancelled)' }
     };
 
-    const today = new Date();
-
     projects.forEach(project => {
-      if (project.status === 'Hoàn thành' || project.percent_complete === 100) {
+      if (project.status === 'Completed' || project.status === 'Hoàn thành') {
         categories.completed.projects.push(project);
-      } else if (project.status === 'Hủy') {
+      } else if (project.status === 'Cancelled' || project.status === 'Canceled' || project.status === 'Hủy') {
         categories.cancelled.projects.push(project);
-      } else if (project.status === 'Tạm dừng') {
-        categories.paused.projects.push(project);
       } else {
-        const endDate = new Date(project.expected_end_date);
-        if (endDate < today && project.percent_complete < 100) {
-          categories.overdue.projects.push(project);
-        } else {
-          categories.active.projects.push(project);
-        }
+        // Tất cả các trạng thái khác đều được coi là Open
+        categories.open.projects.push(project);
       }
     });
 

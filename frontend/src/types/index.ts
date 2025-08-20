@@ -22,10 +22,39 @@ export interface Project {
   is_active: boolean;
 }
 
+export interface Phase {
+  name: string;
+  subject?: string; // Tên phase
+  project?: string;
+  status?: "Open" | "Working" | "Completed";
+  priority?: "Low" | "Medium" | "High" | "Urgent";
+  department?: string;
+  start_date?: string;
+  end_date?: string;
+  progress?: number;
+  details?: string;
+  costing?: number;
+  tasks?: PhaseTask[];
+  // Để backward compatibility
+  phase_name?: string;
+  expected_start_date?: string;
+  expected_end_date?: string;
+  actual_start_date?: string;
+  actual_end_date?: string | null;
+  description?: string;
+}
+
+export interface PhaseTask {
+  name: string;
+  task?: string; 
+  task_name?: string;
+}
+
 export interface Task {
   name: string;
   subject: string;
   project: string;
+  phase?: string;
   status: string;
   priority: string;
   type: string;
@@ -55,10 +84,10 @@ export interface Timesheet {
 
 export interface FilteredData {
   filteredProjects: Project[];
+  filteredPhases: Phase[];
   filteredTasks: Task[];
   filteredTimesheets: Timesheet[];
 }
 
-export interface Department{
-  name:string;
-}
+// Export ToDo interface
+export type { ToDo } from './Todo/ToDo';

@@ -1,13 +1,28 @@
 import type { Project } from '@/types/Projects/Project';
 import { formatCurrency } from '@/utils/formatCurrency';
-import React from 'react';
-
+import React, { useState } from 'react';
+import { DetailProject } from './DetailProject';
+import ProjectActions from './ProjectActions';
 
 interface ProjectListViewCardProps {
   projects: Project[];
+  onProjectsChange?: () => void;
 }
 
-const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) => {
+const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onProjectsChange }) => {
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const handleProjectClick = (project: Project) => {
+    setSelectedProject(project);
+    setIsDrawerOpen(true);
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setSelectedProject(null);
+  };
+
   const getStatusColor = (status?: "Open" | "Completed" | "Cancelled") => {
     switch (status) {
       case 'Open':
@@ -52,11 +67,18 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) =
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Deadline
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {projects.map((project) => (
-              <tr key={project.name} className="hover:bg-gray-50">
+              <tr 
+                key={project.name} 
+                className="hover:bg-gray-50 cursor-pointer transition-colors"
+                onClick={() => handleProjectClick(project)}
+              >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="h-10 w-10 flex-shrink-0">
@@ -101,11 +123,29 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects }) =
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(project.expected_end_date)}
                 </td>
+                <td 
+                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                  onClick={(e) => e.stopPropagation()} // Prevent row click when clicking actions
+                >
+                  <ProjectActions 
+                    project={project}
+                    onProjectUpdated={onProjectsChange}
+                    onProjectDeleted={onProjectsChange}
+                    onCloseDrawer={handleCloseDrawer}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      
+      {/* DetailProject Drawer */}
+      <DetailProject 
+        project={selectedProject}
+        isOpen={isDrawerOpen}
+        onClose={handleCloseDrawer}
+      />
     </div>
   );
 };
