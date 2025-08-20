@@ -11,6 +11,7 @@ export * from './taskProgressService';
 export * from './phaseProgressService';
 export * from './projectProgressService';
 export * from './projectCascadeDeleteService';
+export * from './todoService';
 
 // Re-export commonly used hooks
 export {
@@ -26,6 +27,11 @@ export {
   useUsers,
   useCurrentUser
 } from './userService';
+
+export {
+  useUserTodos,
+  useUserTodosEnriched
+} from './todoService';
 
 export {
   useCustomers,
