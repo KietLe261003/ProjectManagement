@@ -24,7 +24,7 @@ export const ProjectsPage: React.FC = () => {
     ],
   });
   
-  console.log(data);
+  console.log("", data);
   
   // Sử dụng data từ API nếu có, ngược lại sử dụng array rỗng
   const projects: Project[] = (data as Project[]) || [];

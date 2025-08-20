@@ -5,13 +5,15 @@ export interface Project {
   status: string;
   customer: string;
   company: string;
+  department?: string;
+  team?: string;
   expected_start_date: string;
   expected_end_date: string;
   actual_start_date: string;
   actual_end_date: string | null;
   percent_complete: number;
   priority: string;
-  project_cost: number;
+  estimated_costing: number;
   total_billable_amount: number;
   total_billed_amount: number;
   gross_margin: number;
@@ -29,8 +31,8 @@ export interface Task {
   type: string;
   expected_time: number;
   actual_time: number;
-  start_date: string;
-  end_date: string;
+  exp_start_date: string;
+  exp_end_date: string;
   progress: number;
   assigned_to: string | null;
   is_group: boolean;
@@ -55,4 +57,8 @@ export interface FilteredData {
   filteredProjects: Project[];
   filteredTasks: Task[];
   filteredTimesheets: Timesheet[];
+}
+
+export interface Department{
+  name:string;
 }

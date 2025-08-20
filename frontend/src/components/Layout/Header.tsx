@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                 <User className="h-4 w-4 text-white" />
               </div>
-              <span className="hidden md:block text-sm font-medium text-gray-700">John Doe</span>
+              <span className="hidden md:block text-sm font-medium text-gray-700">Administrator</span>
             </button>
           </div>
         </div>

@@ -33,13 +33,17 @@ interface TaskManagementProps {
 export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks }) => {
   // Initialize all projects as expanded by default
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
-    new Set(projects.map(p => p.project_name))
+    new Set(projects.map(p => p.name))
   );
+  
+  
+  //console.log('projects1111', projects);
+
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   
-  const inProgressTasks = tasks.filter(t => t.status === 'Đang thực hiện').length;
-  const completedTasks = tasks.filter(t => t.status === 'Hoàn thành').length;
+  const inProgressTasks = tasks.filter(t => t.status === 'Working').length;
+  const completedTasks = tasks.filter(t => t.status === 'Completed').length;
 
   const toggleProject = (projectName: string) => {
     const newExpanded = new Set(expandedProjects);
@@ -258,17 +262,17 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks 
       <h3 className="text-xl font-semibold mt-8 mb-4 text-gray-700">Danh sách nhiệm vụ</h3>
       <div className="space-y-4">
         {projects.map(project => {
-          const tasksForProject = tasks.filter(t => t.project === project.project_name);
+          const tasksForProject = tasks.filter(t => t.project === project.name);
           
           if (tasksForProject.length === 0) return null;
           
-          const isProjectExpanded = expandedProjects.has(project.project_name);
+          const isProjectExpanded = expandedProjects.has(project.name);
           
           return (
             <div key={project.name}>
               <div 
                 className="bg-blue-500 text-white p-3 rounded-t-lg font-semibold text-lg cursor-pointer hover:bg-blue-600 flex items-center justify-between"
-                onClick={() => toggleProject(project.project_name)}
+                onClick={() => toggleProject(project.name)}
               >
                 <span>Dự án: {project.project_name} ({project.status})</span>
                 <span className="text-xl">
@@ -277,7 +281,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, tasks 
               </div>
               {isProjectExpanded && (
                 <div className="bg-white rounded-b-lg border border-gray-200 p-4">
-                  {buildTaskTree(tasksForProject, project.project_name)}
+                  {buildTaskTree(tasksForProject, project.name)}
                   {tasksForProject.length === 0 && (
                     <div className="text-gray-500 text-center py-4">
                       Chưa có nhiệm vụ nào cho dự án này.

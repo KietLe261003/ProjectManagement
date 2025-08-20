@@ -36,6 +36,8 @@ export interface Project{
 	priority?: "Medium" | "Low" | "High"
 	/**	Department : Link - Department	*/
 	department?: string
+	/**	Team : Link - Department	*/
+	team?: string
 	/**	Customer : Link - Customer	*/
 	customer?: string
 	/**	Sales Order : Link - Sales Order	*/

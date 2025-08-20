@@ -1,4 +1,3 @@
-export { Dashboard } from './Dashboard';
 export { ProjectFilter } from './ProjectFilter';
 export { ProjectOverview } from './ProjectOverview';
 export { TaskManagement } from './TaskManagement';
