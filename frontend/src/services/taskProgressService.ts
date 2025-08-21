@@ -13,9 +13,13 @@ export class TaskProgressService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+<<<<<<< HEAD
             'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
           },
           credentials: 'include',
+=======
+          },
+>>>>>>> CT002-Dashboard
           body: JSON.stringify({
             doctype: 'SubTask',
             fields: ['name', 'status'],

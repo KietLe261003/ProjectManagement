@@ -81,10 +81,10 @@ export const Sidebar: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              User Name
+              Admin
             </p>
             <p className="text-xs text-gray-500 truncate">
-              user@example.com
+              admin@ctgroupvietnam.com
             </p>
           </div>
         </div>

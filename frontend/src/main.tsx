@@ -6,7 +6,7 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
-import { Dashboard } from './components/Dashboard'
+import { Dashboard } from './pages/dashboard-page'
 import { ProjectsPage } from './pages/projects-page/ProjectsPage.tsx'
 import { TasksPage } from './pages/tasks-page/TasksPage.tsx'
 import { TimeTrackingPage } from './pages/TimeTrackingPage'
