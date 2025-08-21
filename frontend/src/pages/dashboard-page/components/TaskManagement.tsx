@@ -68,13 +68,24 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
     return acc;
   }, {} as Record<string, number>);
 
+  // Chuẩn hóa màu sắc theo ProjectOverview
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Open': return '#3b82f6'; // Blue
+      case 'Working': return '#f59e0b'; // Orange/Yellow
+      case 'Completed': return '#22c55e'; // Green
+      case 'Overdue': return '#ef4444'; // Red
+      case 'Cancelled': return '#6b7280'; // Gray
+      default: return '#3b82f6'; // Default blue
+    }
+  };
+
   const statusChartData = {
     labels: Object.keys(taskStatusCounts),
     datasets: [{
-      label: 'Số lượng nhiệm vụ',
       data: Object.values(taskStatusCounts),
-      backgroundColor: [  '#3498db','#db3434ff','#2ecc71', '#f1c40f'],
-      borderColor: ['#70767eff', '#3498db', '#2ecc71', '#f39c12'],
+      backgroundColor: Object.keys(taskStatusCounts).map(status => getStatusColor(status)),
+      borderColor: Object.keys(taskStatusCounts).map(status => getStatusColor(status)),
       borderWidth: 1
     }]
   };
@@ -85,20 +96,48 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
     return acc;
   }, {} as Record<string, number>);
 
+  // Chuẩn hóa màu sắc priority theo ProjectOverview
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'Urgent': return '#dc2626'; // Red
+      case 'High': return '#f97316'; // Orange
+      case 'Medium': return '#eab308'; // Yellow - using orange for consistency
+      case 'Low': return '#16a34a'; // Green
+      default: return '#6b7280'; // Gray
+    }
+  };
+
+  // Lấy màu sắc cho status dự án theo ProjectOverview
+  const getProjectStatusColor = (status: string) => {
+    switch (status) {
+      case 'Completed':
+      case 'Hoàn thành':
+        return '#22c55e'; // Green
+      case 'Cancelled':
+      case 'Canceled':
+      case 'Hủy':
+      case 'Đã hủy':
+        return '#ef4444'; // Red
+      default:
+        return '#3b82f6'; // Blue (Open/Đang mở)
+    }
+  };
+
   const priorityChartData = {
     labels: Object.keys(taskPriorityCounts),
     datasets: [{
       data: Object.values(taskPriorityCounts),
-      backgroundColor: ['#1976d2', '#ef6c00', '#d84315', '#b71c1c'],
+      backgroundColor: Object.keys(taskPriorityCounts).map(priority => getPriorityColor(priority)),
       hoverOffset: 4
     }]
   };
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'bottom' as const,
+        display: false, // Ẩn legend
       }
     },
     scales: {
@@ -209,12 +248,16 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div>
+        <div className="flex flex-col">
           <h3 className="text-lg font-semibold mb-4 text-gray-700">Trạng thái nhiệm vụ</h3>
-          <Bar data={statusChartData} options={chartOptions} />
+          <div className="flex-1" style={{ height: '400px' }}>
+            <Bar data={statusChartData} options={chartOptions} />
+          </div>
         </div>
-        <div>
-          <Doughnut data={priorityChartData} options={doughnutOptions} />
+        <div className="flex flex-col">
+          <div className="flex-1" style={{ height: '400px' }}>
+            <Doughnut data={priorityChartData} options={doughnutOptions} />
+          </div>
         </div>
       </div>
 
@@ -227,13 +270,50 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
           return (
             <div key={project.name}>
               <div 
-                className="bg-blue-500 text-white p-3 rounded-t-lg font-semibold text-lg cursor-pointer hover:bg-blue-600 flex items-center justify-between"
+                className="text-white p-3 rounded-t-lg font-semibold text-lg cursor-pointer hover:opacity-90 flex items-center justify-between transition-opacity"
+                style={{ backgroundColor: getProjectStatusColor(project.status) }}
                 onClick={() => toggleProject(project.name)}
               >
-                <span>Dự án: {project.project_name} ({project.status})</span>
-                <span className="text-xl">
-                  {isProjectExpanded ? '▼' : '▶️'}
-                </span>
+                <div className="flex flex-col flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold">Dự án: {project.project_name} ({project.status})</span>
+                    <span className="text-xl">
+                      {isProjectExpanded ? '▼' : '▶️'}
+                    </span>
+                  </div>
+                  <div className="flex items-center mt-2 text-sm text-white space-x-6">
+                    <div className="flex items-center">
+                      <span className="font-medium mr-2">Priority:</span>
+                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                        {project.priority}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="font-medium mr-2">Progress:</span>
+                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                        {project.percent_complete}%
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="font-medium mr-2">Expected End:</span>
+                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                        {project.expected_end_date ? new Date(project.expected_end_date).toLocaleDateString('vi-VN') : 'Chưa xác định'}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="font-medium mr-2">Department:</span>
+                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                        {project.department}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="font-medium mr-2">Team:</span>
+                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                        {project.team}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
               {isProjectExpanded && (
                 <div className="bg-white rounded-b-lg border border-gray-200 p-4">

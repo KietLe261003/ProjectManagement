@@ -14,7 +14,7 @@ import { LoadingSpinner } from '../../components/LoadingSpinner.tsx';
 export const Dashboard: React.FC = () => {
   const { 
     allProjects, 
-    allPhases,
+    // allPhases,
     filteredData, 
     selectedProject, 
     selectedDepartment,
@@ -77,7 +77,6 @@ export const Dashboard: React.FC = () => {
           selectedProject={selectedProject}
         />
 
-
         <ProjectMilestonesTeam 
           projects={filteredData.filteredProjects}
           tasks={filteredData.filteredTasks}
@@ -90,6 +89,7 @@ export const Dashboard: React.FC = () => {
           projects={filteredData.filteredProjects}
           tasks={filteredData.filteredTasks}
         />
+        
         <TaskManagement
           projects={filteredData.filteredProjects}
           phases={filteredData.filteredPhases}
