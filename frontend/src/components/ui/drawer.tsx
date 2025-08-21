@@ -1,11 +1,7 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
-<<<<<<< HEAD
 import { cn } from '/home/kietle/project-management/apps/todo/frontend/src/lib/utils.ts'
-=======
-import { cn } from "@/lib/utils"
->>>>>>> ca353f013da63c18b5dc0c89d8ff3c60071062d4
 
 function Drawer({
   ...props
