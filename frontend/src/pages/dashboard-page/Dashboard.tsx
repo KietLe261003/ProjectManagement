@@ -85,10 +85,10 @@ export const Dashboard: React.FC = () => {
 
         {/*<ProjectIssuesSummary /> */}
 
-        <ProjectGanttChart 
+        {/* <ProjectGanttChart 
           projects={filteredData.filteredProjects}
           tasks={filteredData.filteredTasks}
-        />
+        /> */}
         
         <TaskManagement
           projects={filteredData.filteredProjects}
