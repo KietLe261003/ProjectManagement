@@ -13,7 +13,13 @@ export class PhaseProgressService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+<<<<<<< HEAD
           },
+=======
+            'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
+          },
+          credentials: 'include',
+>>>>>>> ca353f013da63c18b5dc0c89d8ff3c60071062d4
           body: JSON.stringify({
             doctype: 'project_phase',
             name: phaseName,
@@ -45,7 +51,13 @@ export class PhaseProgressService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
+<<<<<<< HEAD
           },
+=======
+            'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
+          },
+          credentials: 'include',
+>>>>>>> ca353f013da63c18b5dc0c89d8ff3c60071062d4
           body: JSON.stringify({
             doctype: 'Task',
             fields: ['name', 'progress'],
