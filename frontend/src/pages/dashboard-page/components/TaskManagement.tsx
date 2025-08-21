@@ -10,10 +10,10 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import type { Project, Phase, Task } from '../types';
-import { Card } from './Card';
-import { MetricCard } from './MetricCard';
-import { StatusBadge } from './StatusBadge';
+import type { Project, Phase, Task } from '../../../types';
+import { Card } from '../../../components/Card';
+import { MetricCard } from '../../../components/MetricCard';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 ChartJS.register(
   CategoryScale,
@@ -73,7 +73,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
     datasets: [{
       label: 'Số lượng nhiệm vụ',
       data: Object.values(taskStatusCounts),
-      backgroundColor: [  '#70767eff','#3498db','#2ecc71', '#f1c40f'],
+      backgroundColor: [  '#3498db','#db3434ff','#2ecc71', '#f1c40f'],
       borderColor: ['#70767eff', '#3498db', '#2ecc71', '#f39c12'],
       borderWidth: 1
     }]

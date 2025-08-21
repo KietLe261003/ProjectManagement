@@ -1,15 +1,15 @@
 import React from 'react';
-import { useProjectData } from '../../../hooks/useProjectData';
-import { ProjectFilter } from '../../../components/ProjectFilter';
-import { DashboardMetrics } from './components/DashboardMetrics';
+import { useProjectData } from '../../hooks/useProjectData.ts';
+import { ProjectFilter } from './components/ProjectFilter.tsx';
+import { DashboardMetrics } from './components/DashboardMetrics.tsx';
 // import { ProjectIssuesSummary } from './components/ProjectIssuesSummary';
-import { ProjectMilestonesTeam } from './components/ProjectMilestonesTeam';
-import { ProjectGanttChart } from './components/ProjectGanttChart';
-import { ProjectOverview } from '../../../components/ProjectOverview';
-import { TaskManagement } from '../../../components/TaskManagement';
+import { ProjectMilestonesTeam } from './components/ProjectMilestonesTeam.tsx';
+import { ProjectGanttChart } from './components/ProjectGanttChart.tsx';
+import { ProjectOverview } from './components/ProjectOverview.tsx';
+import { TaskManagement } from './components/TaskManagement.tsx';
 //import { TimeTracking } from '../../../components/TimeTracking';
 //import { CostAnalysis } from '../../../components/CostAnalysis';
-import { LoadingSpinner } from '../../../components/LoadingSpinner';
+import { LoadingSpinner } from '../../components/LoadingSpinner.tsx';
 
 export const Dashboard: React.FC = () => {
   const { 
@@ -67,15 +67,21 @@ export const Dashboard: React.FC = () => {
 
         <DashboardMetrics
           projects={filteredData.filteredProjects}
+          tasks={filteredData.filteredTasks}
+          selectedProject={selectedProject}
         />
 
         <ProjectOverview
           projects={filteredData.filteredProjects}
+          tasks={filteredData.filteredTasks}
+          selectedProject={selectedProject}
         />
 
 
         <ProjectMilestonesTeam 
           projects={filteredData.filteredProjects}
+          tasks={filteredData.filteredTasks}
+          selectedProject={selectedProject}
         />
 
         {/*<ProjectIssuesSummary /> */}

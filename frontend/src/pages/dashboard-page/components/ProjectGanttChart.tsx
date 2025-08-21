@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
-import type { Project, Task } from '../../../../types';
-import { Card } from '../../../../components/Card';
+import type { Project, Task } from '../../../types';
+import { Card } from '../../../components/Card';
 
 interface ProjectGanttChartProps {
   projects: Project[];

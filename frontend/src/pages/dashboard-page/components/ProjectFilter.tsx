@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Filter } from 'lucide-react';
-import type { Project } from '../types';
-import { Card } from './Card';
+import type { Project } from '../../../types';
+import { Card } from '../../../components/Card';
 
 interface ProjectFilterProps {
   projects: Project[];
