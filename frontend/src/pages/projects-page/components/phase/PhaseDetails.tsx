@@ -32,6 +32,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
   const [isEditPhaseOpen, setIsEditPhaseOpen] = useState(false);
   const [isDeletePhaseOpen, setIsDeletePhaseOpen] = useState(false);
   const [isCalculatingProgress, setIsCalculatingProgress] = useState(false);
+  const [isRefreshingAfterEdit, setIsRefreshingAfterEdit] = useState(false);
 
   // Hook for phase progress calculation
   const { calculateAndUpdatePhaseProgress } = usePhaseProgressCalculation();
@@ -155,9 +156,40 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
     }
   };
 
-  const handleEditSuccess = () => {
-    if (onPhaseUpdated) {
-      onPhaseUpdated();
+  const handleEditSuccess = async () => {
+    setIsRefreshingAfterEdit(true);
+    
+    try {
+      // Refresh the phase data locally
+      await mutatePhase();
+      
+      // Also refresh tasks data in case any task-related changes
+      await mutateTasks();
+      
+      // Call parent callback to refresh parent component data
+      if (onPhaseUpdated) {
+        await onPhaseUpdated();
+      }
+      
+      // Recalculate phase progress after a short delay to ensure data is updated
+      setTimeout(async () => {
+        setIsCalculatingProgress(true);
+        try {
+          await calculateAndUpdatePhaseProgress(activePhase.name);
+          
+          // Refresh again to get the updated progress
+          setTimeout(async () => {
+            await mutatePhase();
+          }, 500);
+          
+        } catch (error) {
+          console.error('Error recalculating phase progress:', error);
+        } finally {
+          setIsCalculatingProgress(false);
+        }
+      }, 500);
+    } finally {
+      setIsRefreshingAfterEdit(false);
     }
   };
 
@@ -188,10 +220,11 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
             variant="outline"
             size="sm"
             onClick={() => setIsEditPhaseOpen(true)}
+            disabled={isRefreshingAfterEdit || isCalculatingProgress}
             className="flex items-center gap-2"
           >
-            <Edit className="h-4 w-4" />
-            Edit Phase
+            <Edit className={`h-4 w-4 ${isRefreshingAfterEdit ? 'animate-pulse' : ''}`} />
+            {isRefreshingAfterEdit ? 'Updating...' : 'Edit Phase'}
           </Button>
           <Button
             variant="outline"
@@ -496,27 +529,21 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
         projectName={projectName}
         phaseId={phase.name}
         onSuccess={async () => {
-          console.log('Task creation success callback triggered');
           
           // Refresh the phase data first to get updated tasks
-          console.log('Refreshing phase data...');
           await mutatePhase();
           
           // Also refresh the parent data if callback exists
           if (onTaskCreated) {
-            console.log('Calling onTaskCreated to refresh parent data');
             await onTaskCreated();
           }
           
           // Then refresh tasks data after phase is updated
-          console.log('Refreshing tasks data after phase refresh...');
           setTimeout(async () => {
             await mutateTasks();
-            console.log('Tasks data refreshed');
             
             // Recalculate phase progress after tasks are refreshed
             setTimeout(async () => {
-              console.log('Recalculating phase progress after task creation...');
               await handleRecalculateProgress();
             }, 500);
           }, 500);

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Calendar, DollarSign, User, Users, Crown, Plus, Edit, Trash2, RefreshCw } from "lucide-react"
 import { useFrappeGetDoc, useFrappePostCall, useFrappeAuth, useFrappeGetDocList } from "frappe-react-sdk"
 import { useForm, Controller } from "react-hook-form"
+import { mutate } from 'swr'
 
 import { Button } from "@/components/ui/button"
 import { Combobox } from "@/components/input/Combobox"
@@ -500,7 +501,15 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
 
   // Handle edit success
   const handleEditSuccess = () => {
-    refreshProject();
+    refreshProject(); // Refresh current project data
+    
+    // Also refresh the projects list in parent component if needed
+    // This will help update any cached data throughout the app
+    mutate(
+      (key) => typeof key === "string" && key.includes("Project"),
+      undefined,
+      { revalidate: true }
+    );
   };
 
   // Handle delete success
@@ -509,6 +518,9 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
   };
 
   if (!project) return null;
+
+  // Use fullProjectData if available, fallback to project prop
+  const currentProject = fullProjectData || project;
 
   return (
     <Drawer open={isOpen} onOpenChange={onClose} direction="right">
@@ -519,18 +531,18 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
               <div className='flex items-center gap-4'>
                 <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
                   <span className="text-2xl font-bold text-white">
-                    {project.project_name.charAt(0).toUpperCase()}
+                    {currentProject.project_name.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">{project.project_name}</h2>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">{currentProject.project_name}</h2>
                   <div className="flex items-center gap-3">
-                    <span className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${getStatusColor(project.status)}`}>
-                      {project.status || 'Open'}
+                    <span className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${getStatusColor(currentProject.status)}`}>
+                      {currentProject.status || 'Open'}
                     </span>
-                    {project.project_type && (
+                    {currentProject.project_type && (
                       <span className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full">
-                        {project.project_type}
+                        {currentProject.project_type}
                       </span>
                     )}
                   </div>
@@ -735,7 +747,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                       </div>
                       <div>
                         <p className="text-sm font-medium text-blue-600 uppercase tracking-wide">Customer</p>
-                        <p className="text-xl font-bold text-gray-900">{project.customer || 'N/A'}</p>
+                        <p className="text-xl font-bold text-gray-900">{currentProject.customer || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
@@ -747,7 +759,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                       </div>
                       <div>
                         <p className="text-sm font-medium text-green-600 uppercase tracking-wide">Budget</p>
-                        <p className="text-xl font-bold text-gray-900">{formatCurrency(project.estimated_costing)}</p>
+                        <p className="text-xl font-bold text-gray-900">{formatCurrency(currentProject.estimated_costing)}</p>
                       </div>
                     </div>
                   </div>
@@ -759,7 +771,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                       </div>
                       <div>
                         <p className="text-sm font-medium text-purple-600 uppercase tracking-wide">Deadline</p>
-                        <p className="text-xl font-bold text-gray-900">{formatDate(project.expected_end_date)}</p>
+                        <p className="text-xl font-bold text-gray-900">{formatDate(currentProject.expected_end_date)}</p>
                       </div>
                     </div>
                   </div>
@@ -772,19 +784,19 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     <div className="space-y-4">
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-gray-600 font-medium">Start Date</span>
-                        <span className="text-gray-900 font-semibold">{formatDate(project.expected_start_date)}</span>
+                        <span className="text-gray-900 font-semibold">{formatDate(currentProject.expected_start_date)}</span>
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-gray-600 font-medium">Priority</span>
-                        <span className="text-gray-900 font-semibold">{project.priority || 'Medium'}</span>
+                        <span className="text-gray-900 font-semibold">{currentProject.priority || 'Medium'}</span>
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-gray-600 font-medium">Department</span>
-                        <span className="text-gray-900 font-semibold">{project.department || 'N/A'}</span>
+                        <span className="text-gray-900 font-semibold">{currentProject.department || 'N/A'}</span>
                       </div>
                       <div className="flex items-center justify-between py-3">
                         <span className="text-gray-600 font-medium">Company</span>
-                        <span className="text-gray-900 font-semibold">{project.company || 'N/A'}</span>
+                        <span className="text-gray-900 font-semibold">{currentProject.company || 'N/A'}</span>
                       </div>
                     </div>
                   </div>
@@ -794,19 +806,19 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     <div className="space-y-4">
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-gray-600 font-medium">Total Cost</span>
-                        <span className="text-gray-900 font-semibold">{formatCurrency(project.total_costing_amount)}</span>
+                        <span className="text-gray-900 font-semibold">{formatCurrency(currentProject.total_costing_amount)}</span>
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-gray-600 font-medium">Total Sales</span>
-                        <span className="text-gray-900 font-semibold">{formatCurrency(project.total_sales_amount)}</span>
+                        <span className="text-gray-900 font-semibold">{formatCurrency(currentProject.total_sales_amount)}</span>
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-gray-600 font-medium">Billable Amount</span>
-                        <span className="text-gray-900 font-semibold">{formatCurrency(project.total_billable_amount)}</span>
+                        <span className="text-gray-900 font-semibold">{formatCurrency(currentProject.total_billable_amount)}</span>
                       </div>
                       <div className="flex items-center justify-between py-3">
                         <span className="text-gray-600 font-medium">Gross Margin</span>
-                        <span className="text-lg font-bold text-green-600">{formatCurrency(project.gross_margin)}</span>
+                        <span className="text-lg font-bold text-green-600">{formatCurrency(currentProject.gross_margin)}</span>
                       </div>
                     </div>
                   </div>
@@ -849,8 +861,8 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                           "Loading..."
                         ) : ownerData?.full_name ? (
                           ownerData.full_name
-                        ) : project?.owner ? (
-                          project.owner
+                        ) : currentProject?.owner ? (
+                          currentProject.owner
                         ) : (
                           'No Owner'
                         )}
@@ -860,8 +872,8 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                           "Loading email..."
                         ) : ownerData?.email ? (
                           ownerData.email
-                        ) : project?.owner ? (
-                          project.owner
+                        ) : currentProject?.owner ? (
+                          currentProject.owner
                         ) : (
                           'No email'
                         )}

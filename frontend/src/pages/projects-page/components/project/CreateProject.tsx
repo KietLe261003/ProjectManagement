@@ -1,5 +1,5 @@
 import { Combobox } from "@/components/input/Combobox";
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -9,9 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { useCreateProject } from "@/services";
@@ -32,51 +32,68 @@ interface ProjectFormData {
   expected_end_date?: string;
   notes?: string;
 }
-
+import { toast } from "sonner";
 interface CreateProjectProps {
   onProjectCreated?: () => void;
 }
 
 const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
   const [open, setOpen] = useState(false);
-  const { createProject, isLoading, error } = useCreateProject();
-  
+  const { createProject, isLoading } = useCreateProject();
+
   const {
     register,
     control,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
   } = useForm<ProjectFormData>({
     defaultValues: {
       status: "Open",
-      priority: "Medium"
-    }
+      priority: "Medium",
+    },
   });
 
   const onSubmit = async (data: ProjectFormData) => {
     try {
       await createProject(data);
-      
+
       // Reset form and close dialog on success
       reset();
       setOpen(false);
-      
+
       // Force refresh all Project-related SWR cache
       mutate(
-        key => typeof key === 'string' && key.includes('Project'),
+        (key) => typeof key === "string" && key.includes("Project"),
         undefined,
         { revalidate: true }
       );
-      
+      toast.success("Project created successfully");
+
       // Call callback to refresh projects list
       if (onProjectCreated) {
         onProjectCreated();
       }
-      
-      // Optionally show success message
-      console.log("Project created successfully");
-    } catch (err) {
+    } catch (err: any) {
+      let errorMessage = "Create project failed";
+      if (err?._server_messages) {
+        try {
+          const serverMsgs = JSON.parse(err._server_messages);
+          if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
+            const parsed = JSON.parse(serverMsgs[0]);
+            errorMessage = parsed.message || errorMessage;
+          }
+        } catch (parseErr) {
+          console.error("Parse error messages failed:", parseErr);
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      toast.error("Create project failed", {
+        description: errorMessage,
+      });
+
       console.error("Error creating project:", err);
     }
   };
@@ -97,7 +114,7 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
               Fill in the project details. Fields marked with * are required.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             {/* Project Name - Required */}
             <div className="grid gap-2">
@@ -106,13 +123,19 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
               </Label>
               <Input
                 id="project_name"
-                {...register("project_name", { 
-                  required: "Project name is required" 
+                {...register("project_name", {
+                  required: "Project name is required",
+                  maxLength: {
+                    value: 100,
+                    message: "Project name cannot exceed 100 characters",
+                  },
                 })}
                 placeholder="Enter project name"
               />
               {errors.project_name && (
-                <span className="text-red-500 text-sm">{errors.project_name.message}</span>
+                <span className="text-red-500 text-sm">
+                  {errors.project_name.message}
+                </span>
               )}
             </div>
 
@@ -154,9 +177,11 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
                   )}
                 />
               </div>
-              
+
               <div className="grid gap-2">
-                <Label>Status <span className="text-red-500">*</span></Label>
+                <Label>
+                  Status <span className="text-red-500">*</span>
+                </Label>
                 <select
                   {...register("status", { required: "Status is required" })}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -183,7 +208,7 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
                   <option value="Critical">Critical</option>
                 </select>
               </div>
-              
+
               <div className="grid gap-2">
                 <Label>Department</Label>
                 <Controller
@@ -220,7 +245,7 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
                   )}
                 />
               </div>
-              
+
               <div className="grid gap-2">
                 <Label>Cost Center</Label>
                 <Controller
@@ -263,18 +288,12 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Expected Start Date</Label>
-                <Input
-                  type="date"
-                  {...register("expected_start_date")}
-                />
+                <Input type="date" {...register("expected_start_date")} />
               </div>
-              
+
               <div className="grid gap-2">
                 <Label>Expected End Date</Label>
-                <Input
-                  type="date"
-                  {...register("expected_end_date")}
-                />
+                <Input type="date" {...register("expected_end_date")} />
               </div>
             </div>
 
@@ -288,13 +307,6 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
-
-            {/* Error Display */}
-            {error && (
-              <div className="text-red-500 text-sm">
-                Error: {error.message || "Something went wrong"}
-              </div>
-            )}
           </div>
 
           <DialogFooter>
@@ -303,8 +315,8 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
                 Cancel
               </Button>
             </DialogClose>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isSubmitting || isLoading}
               className="bg-blue-600 hover:bg-blue-700"
             >

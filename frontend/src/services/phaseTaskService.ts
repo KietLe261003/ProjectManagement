@@ -8,9 +8,11 @@ export interface PhaseTaskData {
   type: string;
   expected_time: number;
   task_weight: number;
+  exp_start_date?: string;
+  exp_end_date?: string;
   project: string;
   phaseId?: string;
-  assign_to?: string; // Added assign_to field
+  assign_to?: string;
 }
 
 export interface ProjectPhaseTaskData {
@@ -49,6 +51,8 @@ export class PhaseTaskService {
           type: taskData.type,
           expected_time: taskData.expected_time,
           task_weight: taskData.task_weight,
+          exp_start_date: taskData.exp_start_date || null,
+          exp_end_date: taskData.exp_end_date || null,
           project: taskData.project
         });
 
@@ -135,19 +139,8 @@ export class PhaseTaskService {
       } catch (error) {
         console.error('Error in createTaskWithPhase:', error);
         
-        if (error instanceof Error) {
-          return {
-            success: false,
-            error: error.message,
-            message: 'Failed to create task'
-          };
-        }
-        
-        return {
-          success: false,
-          error: 'Unknown error occurred',
-          message: 'Failed to create task'
-        };
+        // Re-throw the error so the component can handle it properly
+        throw error;
       }
     };
 
