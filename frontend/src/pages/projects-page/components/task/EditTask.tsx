@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useFrappeGetDocList } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
 import { useProjectUsers } from '@/services/projectUsersService';
 import { useUpdateTask, useTaskAssignment } from '@/services/taskService';
 import { useManualProgressUpdate, useTaskStatusProgressUpdate } from '@/services/taskProgressService';
+import { toast } from "sonner";
 
 interface EditTaskProps {
   task: any;
@@ -24,6 +25,9 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
   
   // Fetch project users for assignment dropdown
   const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
+  
+  // Fetch project data to validate dates
+  const { data: projectData } = useFrappeGetDoc('Project', projectName);
   
   // Fetch current ToDo assignments for this task
   const { data: existingToDos } = useFrappeGetDocList('ToDo', {
@@ -88,6 +92,28 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
     
     if (!task) return;
 
+    // Validate date fields
+    if (formData.exp_start_date && formData.exp_end_date) {
+      const startDate = new Date(formData.exp_start_date);
+      const endDate = new Date(formData.exp_end_date);
+      
+      if (endDate < startDate) {
+        toast.error('End date cannot be earlier than start date');
+        return;
+      }
+    }
+
+    // Validate against project end date
+    if (formData.exp_end_date && projectData?.expected_end_date) {
+      const taskEndDate = new Date(formData.exp_end_date);
+      const projectEndDate = new Date(projectData.expected_end_date);
+      
+      if (taskEndDate > projectEndDate) {
+        toast.error(`Task end date cannot be after project end date (${projectData.expected_end_date})`);
+        return;
+      }
+    }
+
     try {
       // Determine what type of progress update to use
       const isProgressManuallyChanged = formData.progress !== (task.progress || 0);
@@ -135,6 +161,11 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
         }
       }
       
+      // Show success message
+      toast.success("Task updated successfully", {
+        description: `Task "${formData.subject}" has been updated.`,
+      });
+      
       if (onSuccess) {
         onSuccess();
       }
@@ -144,13 +175,18 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
       console.error('Error updating task:', err);
       
       // Show user-friendly error message
+      let errorMessage = "Failed to update task";
       if (err?.message?.includes('modified')) {
-        alert('The task has been modified by someone else. Please close and reopen the task to get the latest version.');
+        errorMessage = 'The task has been modified by someone else. Please close and reopen the task to get the latest version.';
       } else if (err?.message?.includes('permission')) {
-        alert('You do not have permission to update this task.');
-      } else {
-        alert('Failed to update task. Please try again.');
+        errorMessage = 'You do not have permission to update this task.';
+      } else if (err?.message) {
+        errorMessage = err.message;
       }
+      
+      toast.error("Failed to update task", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -280,7 +316,13 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
                 type="date"
                 value={formData.exp_end_date}
                 onChange={(e) => handleInputChange('exp_end_date', e.target.value)}
+                max={projectData?.expected_end_date || undefined}
               />
+              {projectData?.expected_end_date && (
+                <p className="text-xs text-muted-foreground">
+                  Must be before project end date: {projectData.expected_end_date}
+                </p>
+              )}
             </div>
           </div>
 

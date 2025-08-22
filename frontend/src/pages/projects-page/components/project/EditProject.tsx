@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,6 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useUpdateProject } from '@/services';
 import type { Project } from '@/types/Projects/Project';
 import type { ProjectCreateData } from '@/services/projectService';
+import { useForm, Controller } from 'react-hook-form';
+import { Combobox } from '@/components/input/Combobox';
+import { toast } from "sonner";
 
 interface EditProjectProps {
   project: Project | null;
@@ -15,26 +18,34 @@ interface EditProjectProps {
 }
 
 const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onSuccess }) => {
-  const { updateProject, isLoading, error } = useUpdateProject();
+  const { updateProject, isLoading } = useUpdateProject();
   
-  const [formData, setFormData] = useState<Partial<ProjectCreateData>>({
-    project_name: '',
-    customer: '',
-    project_type: '',
-    status: 'Open',
-    priority: 'Medium',
-    department: '',
-    company: '',
-    cost_center: '',
-    expected_start_date: '',
-    expected_end_date: '',
-    notes: '',
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ProjectCreateData>({
+    defaultValues: {
+      project_name: '',
+      customer: '',
+      project_type: '',
+      status: 'Open',
+      priority: 'Medium',
+      department: '',
+      company: '',
+      cost_center: '',
+      expected_start_date: '',
+      expected_end_date: '',
+      notes: '',
+    },
   });
 
   // Update form data when project changes
   useEffect(() => {
     if (project) {
-      setFormData({
+      reset({
         project_name: project.project_name || '',
         customer: project.customer || '',
         project_type: project.project_type || '',
@@ -48,22 +59,15 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
         notes: project.notes || '',
       });
     }
-  }, [project]);
+  }, [project, reset]);
 
-  const handleInputChange = (field: keyof ProjectCreateData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const onSubmit = async (data: ProjectCreateData) => {
     if (!project) return;
 
     try {
-      await updateProject(project.name, formData);
+      await updateProject(project.name, data);
+      
+      toast.success("Project updated successfully");
       
       // Call success callback if provided
       if (onSuccess) {
@@ -71,15 +75,34 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
       }
       
       onClose();
-    } catch (err) {
-      console.error('Error updating project:', err);
+    } catch (err:any) {
+      let errorMessage = "Edit project failed";
+      if (err?._server_messages) {
+        try {
+          const serverMsgs = JSON.parse(err._server_messages);
+          if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
+            const parsed = JSON.parse(serverMsgs[0]);
+            errorMessage = parsed.message || errorMessage;
+          }
+        } catch (parseErr) {
+          console.error("Parse error messages failed:", parseErr);
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      toast.error("Update project failed", {
+        description: errorMessage,
+      });
+
+      console.error("Error updating project:", err);
     }
   };
 
   const handleCancel = () => {
     if (project) {
       // Reset form to original values
-      setFormData({
+      reset({
         project_name: project.project_name || '',
         customer: project.customer || '',
         project_type: project.project_type || '',
@@ -103,70 +126,88 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
           <DialogTitle>Edit Project</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Project Name */}
           <div className="space-y-2">
             <Label htmlFor="project_name">Project Name *</Label>
             <Input
               id="project_name"
-              value={formData.project_name}
-              onChange={(e) => handleInputChange('project_name', e.target.value)}
-              required
+              {...register('project_name', {
+                  required: "Project name is required",
+                  maxLength: {
+                    value: 100,
+                    message: "Project name cannot exceed 100 characters",
+                  },
+                })}
               placeholder="Enter project name"
             />
+            {errors.project_name && (
+                <span className="text-red-500 text-sm">
+                  {errors.project_name.message}
+                </span>
+              )}
           </div>
 
           {/* Customer */}
-          <div className="space-y-2">
-            <Label htmlFor="customer">Customer</Label>
-            <Input
-              id="customer"
-              value={formData.customer}
-              onChange={(e) => handleInputChange('customer', e.target.value)}
-              placeholder="Enter customer name"
+          <div className="grid gap-2">
+            <Label>Customer</Label>
+            <Controller
+              name="customer"
+              control={control}
+              render={({ field }) => (
+                <Combobox
+                  doctype="Customer"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Select customer..."
+                  displayField="customer_name"
+                  valueField="name"
+                  className="w-full"
+                />
+              )}
             />
           </div>
 
           {/* Project Type */}
-          <div className="space-y-2">
-            <Label htmlFor="project_type">Project Type</Label>
-            <select
-              id="project_type"
-              value={formData.project_type}
-              onChange={(e) => handleInputChange('project_type', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select project type</option>
-              <option value="Internal">Internal</option>
-              <option value="External">External</option>
-              <option value="Other">Other</option>
-            </select>
+          <div className="grid gap-2">
+            <Label>Project Type</Label>
+            <Controller
+              name="project_type"
+              control={control}
+              render={({ field }) => (
+                <Combobox
+                  doctype="Project Type"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Select type..."
+                  className="w-full"
+                />
+              )}
+            />
           </div>
 
           {/* Status and Priority */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+            <div className="grid gap-2">
+              <Label>Status</Label>
               <select
-                id="status"
-                value={formData.status}
-                onChange={(e) => handleInputChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("status")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <option value="">Select status...</option>
                 <option value="Open">Open</option>
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
+            <div className="grid gap-2">
+              <Label>Priority</Label>
               <select
-                id="priority"
-                value={formData.priority}
-                onChange={(e) => handleInputChange('priority', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                {...register("priority")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <option value="">Select priority...</option>
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>
@@ -177,35 +218,56 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
 
           {/* Department and Company */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
-                value={formData.department}
-                onChange={(e) => handleInputChange('department', e.target.value)}
-                placeholder="Enter department"
+            <div className="grid gap-2">
+              <Label>Department</Label>
+              <Controller
+                name="department"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    doctype="Department"
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    placeholder="Select department..."
+                    className="w-full"
+                  />
+                )}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="company">Company</Label>
-              <Input
-                id="company"
-                value={formData.company}
-                onChange={(e) => handleInputChange('company', e.target.value)}
-                placeholder="Enter company"
+            <div className="grid gap-2">
+              <Label>Company</Label>
+              <Controller
+                name="company"
+                control={control}
+                render={({ field }) => (
+                  <Combobox
+                    doctype="Company"
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    placeholder="Select company..."
+                    className="w-full"
+                  />
+                )}
               />
             </div>
           </div>
 
           {/* Cost Center */}
-          <div className="space-y-2">
-            <Label htmlFor="cost_center">Cost Center</Label>
-            <Input
-              id="cost_center"
-              value={formData.cost_center}
-              onChange={(e) => handleInputChange('cost_center', e.target.value)}
-              placeholder="Enter cost center"
+          <div className="grid gap-2">
+            <Label>Cost Center</Label>
+            <Controller
+              name="cost_center"
+              control={control}
+              render={({ field }) => (
+                <Combobox
+                  doctype="Cost Center"
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Select cost center..."
+                  className="w-full"
+                />
+              )}
             />
           </div>
 
@@ -216,8 +278,7 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
               <Input
                 id="expected_start_date"
                 type="date"
-                value={formData.expected_start_date}
-                onChange={(e) => handleInputChange('expected_start_date', e.target.value)}
+                {...register('expected_start_date')}
               />
             </div>
 
@@ -226,8 +287,7 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
               <Input
                 id="expected_end_date"
                 type="date"
-                value={formData.expected_end_date}
-                onChange={(e) => handleInputChange('expected_end_date', e.target.value)}
+                {...register('expected_end_date')}
               />
             </div>
           </div>
@@ -237,20 +297,12 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
             <Label htmlFor="notes">Notes</Label>
             <textarea
               id="notes"
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
+              {...register('notes')}
               placeholder="Enter project notes"
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
           </div>
-
-          {/* Error Display */}
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
-              <p><strong>Error:</strong> {error.message || 'Failed to update project'}</p>
-            </div>
-          )}
 
           <DialogFooter className="flex gap-2">
             <Button type="button" variant="outline" onClick={handleCancel}>

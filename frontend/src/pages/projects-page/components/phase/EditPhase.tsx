@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { useProjectUsers } from '@/services/projectUsersService';
 import { useUpdatePhase, usePhaseAssignment } from '@/services/phaseService';
+import { toast } from "sonner";
 
 interface EditPhaseProps {
   phase: any;
@@ -96,6 +97,11 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, projectName, isOpen, onClo
         await assignPhase(phase.name, newAssignment);
       }
       
+      // Show success message
+      toast.success("Phase updated successfully", {
+        description: `Phase "${formData.subject}" has been updated.`,
+      });
+      
       if (onSuccess) {
         onSuccess();
       }
@@ -103,6 +109,11 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, projectName, isOpen, onClo
       onClose();
     } catch (err) {
       console.error('Error updating phase:', err);
+      
+      // Show error message
+      toast.error("Failed to update phase", {
+        description: err instanceof Error ? err.message : "An unexpected error occurred.",
+      });
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCreatePhaseTask } from '@/services/phaseTaskService';
 import { useProjectUsers } from '@/services/projectUsersService';
+import { useFrappeGetDoc } from 'frappe-react-sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from "sonner";
 
 interface CreateTaskProps {
   isOpen: boolean;
@@ -36,7 +38,9 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
     type: 'Task',
     expected_time: 0,
     task_weight: 1,
-    assign_to: '' // Added assign_to field
+    exp_start_date: '',
+    exp_end_date: '',
+    assign_to: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -45,6 +49,9 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
   
   // Fetch project users for assignment dropdown
   const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
+  
+  // Fetch project data to validate dates
+  const { data: projectData } = useFrappeGetDoc('Project', projectName);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -79,24 +86,61 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
       return;
     }
 
+    // Validate date fields
+    if (formData.exp_start_date && formData.exp_end_date) {
+      const startDate = new Date(formData.exp_start_date);
+      const endDate = new Date(formData.exp_end_date);
+      
+      if (endDate < startDate) {
+        toast.error('End date cannot be earlier than start date');
+        return;
+      }
+    }
+
+    // Validate against project end date
+    if (formData.exp_end_date && projectData?.expected_end_date) {
+      const taskEndDate = new Date(formData.exp_end_date);
+      const projectEndDate = new Date(projectData.expected_end_date);
+      
+      if (taskEndDate > projectEndDate) {
+        toast.error(`Task end date cannot be after project end date (${projectData.expected_end_date})`);
+        return;
+      }
+    }
+
     try {
       const taskData: any = {
         ...formData,
         project: projectName,
         expected_time: Number(formData.expected_time),
         task_weight: Number(formData.task_weight),
+        // Only include date fields if they have values
+        exp_start_date: formData.exp_start_date || undefined,
+        exp_end_date: formData.exp_end_date || undefined,
         phaseId: phaseId, // Add phaseId to the data object
         assign_to: formData.assign_to || undefined // Only include if not empty
       };
+
+      console.log('Creating task with data:', taskData);
+      console.log('Date fields:', {
+        exp_start_date: formData.exp_start_date,
+        exp_end_date: formData.exp_end_date
+      });
 
       // Use the service to create task with optional phase
       const result = await createTaskWithPhase(taskData);
       console.log('Task with phase created:', result);
 
       // Show success message with assignment info
+      let successMessage = `Task "${formData.subject}" has been created successfully.`;
       if (result.todo && formData.assign_to) {
         console.log('Task assigned and ToDo created for:', formData.assign_to);
+        successMessage += ` Task has been assigned to ${formData.assign_to}.`;
       }
+      
+      toast.success("Task created successfully", {
+        description: successMessage,
+      });
 
       // Reset form
       setFormData({
@@ -107,6 +151,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         type: 'Task',
         expected_time: 0,
         task_weight: 1,
+        exp_start_date: '',
+        exp_end_date: '',
         assign_to: ''
       });
       setErrors({});
@@ -115,9 +161,34 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         onSuccess();
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating task:', error);
-      setErrors({ submit: 'Failed to create task. Please try again.' });
+      
+      let errorMessage = 'Failed to create task. Please try again.';
+      
+      // Handle specific validation errors from server
+      if (error?.message) {
+        if (error.message.includes('Expected End Date cannot be after Project')) {
+          errorMessage = 'Task end date cannot be after the project end date. Please choose an earlier date.';
+        } else if (error.message.includes('InvalidDates')) {
+          errorMessage = 'Invalid date configuration. Please check your task dates.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      // Check if it's a server exception response
+      if (error?.exception && typeof error.exception === 'string') {
+        if (error.exception.includes('Expected End Date cannot be after Project')) {
+          errorMessage = 'Task end date cannot be after the project end date. Please choose an earlier date.';
+        }
+      }
+      
+      toast.error("Failed to create task", {
+        description: errorMessage,
+      });
+      
+      setErrors({ submit: errorMessage });
     }
   };
 
@@ -130,6 +201,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
       type: 'Task',
       expected_time: 0,
       task_weight: 1,
+      exp_start_date: '',
+      exp_end_date: '',
       assign_to: ''
     });
     setErrors({});
@@ -211,7 +284,10 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                 >
                   <option value="Open">Open</option>
                   <option value="Working">Working</option>
+                  <option value="Overdue">Overdue</option>
+                  <option value="Pending Review">Pending Review</option>
                   <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
             </div>
@@ -268,6 +344,35 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
                   onChange={(e) => handleInputChange('task_weight', Number(e.target.value))}
                   placeholder="1"
                 />
+              </div>
+            </div>
+
+            {/* Date Fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="exp_start_date">Expected Start Date</Label>
+                <Input
+                  id="exp_start_date"
+                  type="date"
+                  value={formData.exp_start_date}
+                  onChange={(e) => handleInputChange('exp_start_date', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="exp_end_date">Expected End Date</Label>
+                <Input
+                  id="exp_end_date"
+                  type="date"
+                  value={formData.exp_end_date}
+                  onChange={(e) => handleInputChange('exp_end_date', e.target.value)}
+                  max={projectData?.expected_end_date || undefined}
+                />
+                {projectData?.expected_end_date && (
+                  <p className="text-xs text-muted-foreground">
+                    Must be before project end date: {projectData.expected_end_date}
+                  </p>
+                )}
               </div>
             </div>
           </div>

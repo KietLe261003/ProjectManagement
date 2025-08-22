@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useProjectCascadeDelete } from '@/services/projectCascadeDeleteService';
 import type { Project } from '@/types/Projects/Project';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-
+import { toast } from "sonner";
 interface DeleteProjectProps {
   project: Project | null;
   isOpen: boolean;
@@ -19,18 +19,37 @@ const DeleteProject: React.FC<DeleteProjectProps> = ({ project, isOpen, onClose,
   const [deletionProgress, setDeletionProgress] = useState<string>('');
 
   const handleDelete = async () => {
-    if (!project) return;
+    if (!project) {
+      console.error('No project selected for deletion');
+      toast.error("Delete project failed", {
+        description: "No project selected",
+      });
+      return;
+    }
+
+    if (isLoading) {
+      console.log('Delete already in progress, ignoring duplicate request');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
     setDeletionProgress('Starting deletion...');
 
     try {
-      setDeletionProgress('Deleting subtasks...');
-      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for UI feedback
+      console.log(`Starting deletion for project: ${project.name}`);
       
-      setDeletionProgress('Deleting tasks and phases...');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setDeletionProgress('Deleting subtasks...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      setDeletionProgress('Deleting tasks...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      setDeletionProgress('Deleting project phases...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      setDeletionProgress('Cleaning up dependencies...');
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       setDeletionProgress('Deleting project...');
       const result = await deleteProjectCascade(project.name);
@@ -39,15 +58,51 @@ const DeleteProject: React.FC<DeleteProjectProps> = ({ project, isOpen, onClose,
       
       console.log('Cascade deletion result:', result);
       
+      toast.success("Project deleted successfully", {
+        description: `Project "${project.name}" and all related items have been deleted.`,
+      });
+      
       // Call success callback if provided
       if (onSuccess) {
         onSuccess();
       }
-      
       onClose();
-    } catch (err) {
+    } catch (err:any) {
+      // Extract more meaningful error messages
+      let errorMessage = "Delete project failed";
+      let isRetryable = false;
+      
+      if (err?._server_messages) {
+        try {
+          const serverMsgs = JSON.parse(err._server_messages);
+          if (Array.isArray(serverMsgs) && serverMsgs.length > 0) {
+            const parsed = JSON.parse(serverMsgs[0]);
+            errorMessage = parsed.message || errorMessage;
+          }
+        } catch (parseErr) {
+          console.error("Parse error messages failed:", parseErr);
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+        
+        // Check if this is a retryable error (dependencies issue)
+        if (errorMessage.includes('dependencies') || 
+            errorMessage.includes('linked') || 
+            errorMessage.includes('referenced') ||
+            errorMessage.includes('Unknown project deletion error')) {
+          isRetryable = true;
+          errorMessage += '\n\nTip: This error usually resolves on the second attempt. Please try again.';
+        }
+      }
+      
       console.error('Error deleting project:', err);
-      setError(err instanceof Error ? err : new Error('Failed to delete project'));
+      
+      toast.error("Delete project failed", {
+        description: errorMessage,
+        duration: isRetryable ? 8000 : 5000, // Longer duration for retryable errors
+      });
+      
+      setError(err instanceof Error ? err : new Error(errorMessage));
       setDeletionProgress('');
     } finally {
       setIsLoading(false);

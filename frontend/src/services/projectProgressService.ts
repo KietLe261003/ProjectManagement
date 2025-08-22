@@ -49,7 +49,6 @@ export class ProjectProgressService {
           percent_complete: averageProgress
         });
         
-        console.log(`Project ${projectName} progress updated to ${averageProgress}% (from ${phases.length} phases)`);
         return averageProgress;
       } catch (error) {
         console.error('Error calculating project progress from phases:', error);
@@ -94,7 +93,6 @@ export class ProjectProgressService {
           await updateDoc('Project', projectName, {
             percent_complete: 0
           });
-          console.log(`Project ${projectName} progress updated to 0% (no tasks)`);
           return 0;
         }
 
@@ -111,7 +109,7 @@ export class ProjectProgressService {
           percent_complete: averageProgress
         });
         
-        console.log(`Project ${projectName} progress updated to ${averageProgress}% (from ${tasks.length} tasks)`);
+       
         return averageProgress;
       } catch (error) {
         console.error('Error calculating project progress from tasks:', error);
@@ -164,7 +162,6 @@ export class ProjectProgressService {
             percent_complete: averageProgress
           });
           
-          console.log(`Project ${projectName} progress updated to ${averageProgress}% (from ${phases.length} phases)`);
           return { progress: averageProgress, source: 'phases', count: phases.length };
         } else {
           // Calculate from tasks directly
@@ -194,7 +191,6 @@ export class ProjectProgressService {
             await updateDoc('Project', projectName, {
               percent_complete: 0
             });
-            console.log(`Project ${projectName} progress updated to 0% (no tasks)`);
             return { progress: 0, source: 'none', count: 0 };
           }
 
@@ -208,8 +204,6 @@ export class ProjectProgressService {
           await updateDoc('Project', projectName, {
             percent_complete: averageProgress
           });
-          
-          console.log(`Project ${projectName} progress updated to ${averageProgress}% (from ${tasks.length} tasks)`);
           return { progress: averageProgress, source: 'tasks', count: tasks.length };
         }
       } catch (error) {

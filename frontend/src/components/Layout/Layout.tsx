@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Toaster } from '@/components/ui/sonner';
 
 export const Layout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -38,6 +39,7 @@ export const Layout: React.FC = () => {
           </div>
         </main>
       </div>
+      <Toaster />
     </div>
   );
 };
