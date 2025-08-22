@@ -11,10 +11,7 @@ export * from './taskProgressService';
 export * from './phaseProgressService';
 export * from './projectProgressService';
 export * from './projectCascadeDeleteService';
-<<<<<<< HEAD
 export * from './todoService';
-=======
->>>>>>> CT002-Dashboard
 
 // Re-export commonly used hooks
 export {
@@ -32,14 +29,11 @@ export {
 } from './userService';
 
 export {
-<<<<<<< HEAD
   useUserTodos,
   useUserTodosEnriched
 } from './todoService';
 
 export {
-=======
->>>>>>> CT002-Dashboard
   useCustomers,
   useCompanies,
   useProjectTypes,

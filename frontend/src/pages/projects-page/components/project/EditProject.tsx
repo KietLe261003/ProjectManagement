@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useUpdateProject } from '@/services';
 import type { Project } from '@/types/Projects/Project';
 import type { ProjectCreateData } from '@/services/projectService';
+import { useDateValidation } from '@/utils/dateValidation';
 
 interface EditProjectProps {
   project: Project | null;
@@ -16,6 +17,7 @@ interface EditProjectProps {
 
 const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onSuccess }) => {
   const { updateProject, isLoading, error } = useUpdateProject();
+  const { validateProjectDates } = useDateValidation();
   
   const [formData, setFormData] = useState<Partial<ProjectCreateData>>({
     project_name: '',
@@ -31,9 +33,16 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
     notes: '',
   });
 
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+
   // Update form data when project changes
   useEffect(() => {
     if (project) {
+      const formattedStartDate = project.expected_start_date ? 
+        (project.expected_start_date.includes(' ') ? project.expected_start_date.split(' ')[0] : project.expected_start_date) : '';
+      const formattedEndDate = project.expected_end_date ? 
+        (project.expected_end_date.includes(' ') ? project.expected_end_date.split(' ')[0] : project.expected_end_date) : '';
+      
       setFormData({
         project_name: project.project_name || '',
         customer: project.customer || '',
@@ -41,26 +50,66 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
         status: project.status || 'Open',
         priority: project.priority || 'Medium',
         department: project.department || '',
-        company: project.company || '',
+        company: project.company || '', // Đảm bảo company được set đúng
         cost_center: project.cost_center || '',
-        expected_start_date: project.expected_start_date ? project.expected_start_date.split(' ')[0] : '',
-        expected_end_date: project.expected_end_date ? project.expected_end_date.split(' ')[0] : '',
+        expected_start_date: formattedStartDate,
+        expected_end_date: formattedEndDate,
         notes: project.notes || '',
       });
+      
+      // Clear validation errors when project changes
+      setValidationErrors({});
     }
   }, [project]);
 
+  // Debug log để kiểm tra dữ liệu
+  console.log('Project data:', project);
+  console.log('Form data:', formData);
   const handleInputChange = (field: keyof ProjectCreateData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[field]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+
+    // Validate date fields on the fly
+    if (field === 'expected_start_date' || field === 'expected_end_date') {
+      const validationResult = validateProjectDates(
+        field === 'expected_start_date' ? value : formData.expected_start_date,
+        field === 'expected_end_date' ? value : formData.expected_end_date
+      );
+      
+      setValidationErrors(prev => ({
+        ...prev,
+        expected_start_date: validationResult.errors.startDate || '',
+        expected_end_date: validationResult.errors.endDate || ''
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!project) return;
+
+    // Validate dates before submission
+    const validationResult = validateProjectDates(formData.expected_start_date, formData.expected_end_date);
+    
+    if (!validationResult.isValid) {
+      setValidationErrors(prev => ({
+        ...prev,
+        expected_start_date: validationResult.errors.startDate || '',
+        expected_end_date: validationResult.errors.endDate || ''
+      }));
+      return;
+    }
 
     try {
       await updateProject(project.name, formData);
@@ -78,6 +127,11 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
 
   const handleCancel = () => {
     if (project) {
+      const formattedStartDate = project.expected_start_date ? 
+        (project.expected_start_date.includes(' ') ? project.expected_start_date.split(' ')[0] : project.expected_start_date) : '';
+      const formattedEndDate = project.expected_end_date ? 
+        (project.expected_end_date.includes(' ') ? project.expected_end_date.split(' ')[0] : project.expected_end_date) : '';
+      
       // Reset form to original values
       setFormData({
         project_name: project.project_name || '',
@@ -86,13 +140,16 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
         status: project.status || 'Open',
         priority: project.priority || 'Medium',
         department: project.department || '',
-        company: project.company || '',
+        company: project.company || '', // Đảm bảo company được reset đúng
         cost_center: project.cost_center || '',
-        expected_start_date: project.expected_start_date ? project.expected_start_date.split(' ')[0] : '',
-        expected_end_date: project.expected_end_date ? project.expected_end_date.split(' ')[0] : '',
+        expected_start_date: formattedStartDate,
+        expected_end_date: formattedEndDate,
         notes: project.notes || '',
       });
     }
+    
+    // Clear validation errors
+    setValidationErrors({});
     onClose();
   };
 
@@ -191,7 +248,7 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
               <Label htmlFor="company">Company</Label>
               <Input
                 id="company"
-                value={formData.company}
+                value={formData.company || ''} 
                 onChange={(e) => handleInputChange('company', e.target.value)}
                 placeholder="Enter company"
               />
@@ -219,6 +276,11 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
                 value={formData.expected_start_date}
                 onChange={(e) => handleInputChange('expected_start_date', e.target.value)}
               />
+              {validationErrors.expected_start_date && (
+                <p className="text-sm text-red-600 mt-1">
+                  {validationErrors.expected_start_date}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -229,6 +291,11 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
                 value={formData.expected_end_date}
                 onChange={(e) => handleInputChange('expected_end_date', e.target.value)}
               />
+              {validationErrors.expected_end_date && (
+                <p className="text-sm text-red-600 mt-1">
+                  {validationErrors.expected_end_date}
+                </p>
+              )}
             </div>
           </div>
 
