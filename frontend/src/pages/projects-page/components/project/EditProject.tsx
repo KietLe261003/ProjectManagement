@@ -8,7 +8,7 @@ import type { Project } from '@/types/Projects/Project';
 import type { ProjectCreateData } from '@/services/projectService';
 import { useForm, Controller } from 'react-hook-form';
 import { Combobox } from '@/components/input/Combobox';
-import { toast } from "sonner";
+import { toast } from '@/utils/toastUtils';
 
 interface EditProjectProps {
   project: Project | null;

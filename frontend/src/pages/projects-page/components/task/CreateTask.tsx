@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { toast } from "sonner";
+import { toast } from '@/utils/toastUtils';
 
 interface CreateTaskProps {
   isOpen: boolean;
@@ -44,6 +44,7 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { createTaskWithPhase, isLoading } = useCreatePhaseTask();
   
@@ -82,6 +83,11 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent duplicate submissions
+    if (isSubmitting) {
+      return;
+    }
+    
     if (!validateForm()) {
       return;
     }
@@ -107,6 +113,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
         return;
       }
     }
+
+    setIsSubmitting(true);
 
     try {
       const taskData: any = {
@@ -189,6 +197,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
       });
       
       setErrors({ submit: errorMessage });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -387,8 +397,8 @@ export const CreateTask: React.FC<CreateTaskProps> = ({
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Task'}
+            <Button type="submit" disabled={isLoading || isSubmitting}>
+              {isLoading || isSubmitting ? 'Creating...' : 'Create Task'}
             </Button>
           </DialogFooter>
         </form>

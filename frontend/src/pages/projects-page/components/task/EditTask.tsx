@@ -7,7 +7,7 @@ import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
 import { useProjectUsers } from '@/services/projectUsersService';
 import { useUpdateTask, useTaskAssignment } from '@/services/taskService';
 import { useManualProgressUpdate, useTaskStatusProgressUpdate } from '@/services/taskProgressService';
-import { toast } from "sonner";
+import { toast } from '@/utils/toastUtils';
 
 interface EditTaskProps {
   task: any;

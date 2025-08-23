@@ -3,6 +3,7 @@ import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { CheckCircle2, Circle, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateProjectPhase } from './phase/CreateProjectPhase';
+import { CreateStandaloneTask } from './task';
 import type { SubTask } from '@/types/Todo/SubTask';
 
 interface ProjectTaskManagementProps {
@@ -21,6 +22,7 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [isCreatePhaseModalOpen, setIsCreatePhaseModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [phasesWithTasks, setPhasesWithTasks] = useState<any[]>([]);
 
   // Fetch project phases list first
@@ -70,7 +72,7 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   }, [phasesList?.length, phasesList?.map(p => p.name).join(',')]);  // More stable dependencies
 
   // Fetch all tasks for this project
-  const { data: tasks, isLoading: tasksLoading } = useFrappeGetDocList('Task', {
+  const { data: tasks, isLoading: tasksLoading, mutate: mutateTasks } = useFrappeGetDocList('Task', {
     fields: ['name', 'subject', 'status', 'priority', 'project', 'exp_start_date', 'exp_end_date', 'progress'],
     filters: [['project', '=', projectName]],
     orderBy: { field: 'exp_start_date', order: 'asc' }
@@ -332,6 +334,15 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
         <div className="flex items-center gap-2">
           <Button 
             size="sm" 
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => setIsCreateTaskModalOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Add Task
+          </Button>
+          <Button 
+            size="sm" 
             className="flex items-center gap-2"
             onClick={() => setIsCreatePhaseModalOpen(true)}
           >
@@ -512,8 +523,8 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
             <h3 className="text-lg font-medium text-gray-900 mb-2">No phases or tasks yet</h3>
             <p className="text-gray-600 mb-6">Start organizing your project by creating phases and tasks.</p>
             <div className="flex gap-3 justify-center">
-              <Button>Create First Phase</Button>
-              <Button variant="outline">Create Task</Button>
+              <Button onClick={() => setIsCreatePhaseModalOpen(true)}>Create First Phase</Button>
+              <Button variant="outline" onClick={() => setIsCreateTaskModalOpen(true)}>Create Task</Button>
             </div>
           </div>
         </div>
@@ -542,6 +553,16 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
         projectName={projectName}
         onSuccess={() => {
           mutatePhases(); // Refresh phases data
+        }}
+      />
+
+      {/* Create Standalone Task Modal */}
+      <CreateStandaloneTask
+        isOpen={isCreateTaskModalOpen}
+        onClose={() => setIsCreateTaskModalOpen(false)}
+        projectName={projectName}
+        onSuccess={() => {
+          mutateTasks(); // Refresh tasks data
         }}
       />
     </div>
