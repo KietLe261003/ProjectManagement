@@ -74,7 +74,7 @@ export const handleTokenExpiry = () => {
     
     // Redirect to login page
     const loginUrl = import.meta.env.DEV 
-      ? 'http://localhost:8007/login'
+      ? '/login'
       : '/login';
     
     window.location.href = loginUrl;
@@ -90,7 +90,7 @@ export const handleTokenExpiry = () => {
  */
 export const getLoginUrl = (): string => {
   if (import.meta.env.DEV) {
-    return 'http://localhost:8007/login';
+    return '/login';
   }
   return '/login';
 };
