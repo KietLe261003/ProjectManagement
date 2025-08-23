@@ -51,7 +51,8 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
   const { data: allTasks, isLoading: tasksLoading, mutate: mutateTasks } = useFrappeGetDocList('Task', {
     fields: ['name', 'subject', 'status', 'priority', 'project', 'exp_start_date', 'exp_end_date', 'progress'],
     filters: [['project', '=', projectName]],
-    orderBy: { field: 'exp_start_date', order: 'asc' }
+    orderBy: { field: 'exp_start_date', order: 'asc' },
+    limit: 0 // Get all tasks
   });
 
   // Filter tasks that belong to this phase (from phase.tasks child table)

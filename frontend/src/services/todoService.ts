@@ -43,7 +43,8 @@ export class TodoService {
         orderBy: {
           field: 'creation',
           order: 'desc'
-        }
+        },
+        limit: 0 // Get all todos
       },
       currentUser?.name ? 'user-todos' : null
     );

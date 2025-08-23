@@ -29,7 +29,8 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   const { data: phasesList, isLoading: phasesLoading, mutate: mutatePhases } = useFrappeGetDocList('project_phase', {
     fields: ['name', 'subject', 'status', 'priority', 'start_date', 'end_date', 'progress', 'details', 'costing'],
     filters: [['project', '=', projectName]],
-    orderBy: { field: 'start_date', order: 'asc' }
+    orderBy: { field: 'start_date', order: 'asc' },
+    limit: 0 // Get all phases
   });
 
   // Fetch individual phase documents to get child table data
@@ -75,7 +76,8 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   const { data: tasks, isLoading: tasksLoading, mutate: mutateTasks } = useFrappeGetDocList('Task', {
     fields: ['name', 'subject', 'status', 'priority', 'project', 'exp_start_date', 'exp_end_date', 'progress'],
     filters: [['project', '=', projectName]],
-    orderBy: { field: 'exp_start_date', order: 'asc' }
+    orderBy: { field: 'exp_start_date', order: 'asc' },
+    limit: 0 // Get all tasks
   });
 
   // Get task names for filtering subtasks
@@ -85,7 +87,8 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   const { data: subtasks, isLoading: subtasksLoading } = useFrappeGetDocList('SubTask', {
     fields: ['name', 'subject', 'task', 'status', 'progress', 'start_date', 'end_date', 'description'],
     filters: taskNames.length > 0 ? [['task', 'in', taskNames]] : [['task', '=', 'dummy-non-existent-task']],
-    orderBy: { field: 'start_date', order: 'asc' }
+    orderBy: { field: 'start_date', order: 'asc' },
+    limit: 0 // Get all subtasks
   });
 
   const togglePhase = (phaseId: string) => {

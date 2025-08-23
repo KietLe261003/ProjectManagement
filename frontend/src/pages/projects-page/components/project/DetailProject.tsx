@@ -85,14 +85,16 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   const { data: projectPhases } = useFrappeGetDocList('project_phase', {
     fields: ['name', 'progress'],
     filters: [['project', '=', project?.name || '']],
-    orderBy: { field: 'creation', order: 'asc' }
+    orderBy: { field: 'creation', order: 'asc' },
+    limit: 0 // Get all phases
   });
 
   // Fetch tasks for progress calculation (fallback when no phases)
   const { data: projectTasks } = useFrappeGetDocList('Task', {
     fields: ['name', 'progress'],
     filters: [['project', '=', project?.name || '']],
-    orderBy: { field: 'creation', order: 'asc' }
+    orderBy: { field: 'creation', order: 'asc' },
+    limit: 0 // Get all tasks
   });
 
   const { call: insertCall } = useFrappePostCall('frappe.client.insert');
