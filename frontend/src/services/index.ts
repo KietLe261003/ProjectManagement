@@ -12,6 +12,7 @@ export * from './phaseProgressService';
 export * from './projectProgressService';
 export * from './projectCascadeDeleteService';
 export * from './todoService';
+export * from './authService';
 
 // Re-export commonly used hooks
 export {
@@ -32,6 +33,12 @@ export {
   useUserTodos,
   useUserTodosEnriched
 } from './todoService';
+
+export {
+  useAuthWithWatcher,
+  validateToken,
+  forceLogout
+} from './authService';
 
 export {
   useCustomers,

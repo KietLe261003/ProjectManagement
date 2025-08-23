@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useFrappeGetDocList } from 'frappe-react-sdk';
 import { useProjectUsers } from '@/services/projectUsersService';
 import { useUpdatePhase, usePhaseAssignment } from '@/services/phaseService';
-import { toast } from "sonner";
+import { toast } from '@/utils/toastUtils';
 
 interface EditPhaseProps {
   phase: any;

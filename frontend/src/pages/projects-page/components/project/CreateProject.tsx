@@ -32,7 +32,7 @@ interface ProjectFormData {
   expected_end_date?: string;
   notes?: string;
 }
-import { toast } from "sonner";
+import { toast } from '@/utils/toastUtils';
 interface CreateProjectProps {
   onProjectCreated?: () => void;
 }

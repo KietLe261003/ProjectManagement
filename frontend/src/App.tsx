@@ -1,6 +1,7 @@
 import { FrappeProvider } from 'frappe-react-sdk'
 import { ThemeProvider } from 'next-themes'
 import { Layout } from './components/Layout/Layout'
+import { AuthWrapper } from './components/AuthWrapper'
 import './App.css';
 
 function App() {
@@ -15,7 +16,9 @@ function App() {
 				enableSystem
 				disableTransitionOnChange
 			>
-				<Layout />
+				<AuthWrapper checkInterval={5} showNotifications={true}>
+					<Layout />
+				</AuthWrapper>
 			</ThemeProvider>
 		</FrappeProvider>
 	)

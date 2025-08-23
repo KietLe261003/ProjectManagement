@@ -3,6 +3,8 @@ import { Bell, Search, Menu, LogOut, Settings, ChevronDown } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useCurrentUser, useCurrentUserProfile } from '@/services/userService';
 import { useFrappeAuth } from 'frappe-react-sdk';
+import { handleTokenExpiry, getLoginUrl } from '@/utils/authUtils';
+import { toast } from '@/utils/toastUtils';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -15,11 +17,30 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   const handleLogout = async () => {
     try {
+      toast.success('Logging out...', {
+        description: 'You will be redirected to the login page.',
+        duration: 2000,
+      });
+      
+      // Use Frappe's logout method
       await logout();
-      // Optionally redirect to login page
-      window.location.href = 'http://localhost:8007/login';
+      
+      // Small delay to show the toast before redirect
+      setTimeout(() => {
+        // Use our centralized logout handling
+        handleTokenExpiry();
+      }, 1000);
     } catch (error) {
       console.error('Logout failed:', error);
+      
+      toast.error('Logout failed', {
+        description: 'Please try again or contact support.',
+      });
+      
+      // Fallback: force redirect anyway
+      setTimeout(() => {
+        window.location.href = getLoginUrl();
+      }, 2000);
     }
   };
 

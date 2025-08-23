@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useProjectCascadeDelete } from '@/services/projectCascadeDeleteService';
 import type { Project } from '@/types/Projects/Project';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { toast } from "sonner";
+import { toast } from '@/utils/toastUtils';
 interface DeleteProjectProps {
   project: Project | null;
   isOpen: boolean;

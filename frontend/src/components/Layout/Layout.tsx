@@ -39,7 +39,15 @@ export const Layout: React.FC = () => {
           </div>
         </main>
       </div>
-      <Toaster />
+      <Toaster 
+        position="top-right" 
+        richColors
+        expand={true}
+        closeButton
+        toastOptions={{
+          duration: 4000,
+        }}
+      />
     </div>
   );
 };

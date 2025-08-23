@@ -1,6 +1,8 @@
 /**
- * Utility functions for API calls with CSRF token support
+ * Utility functions for API calls with CSRF token support and auth handling
  */
+
+import { handleTokenExpiry, checkTokenValidity } from './authUtils';
 
 export interface FrappeAPIRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -10,9 +12,25 @@ export interface FrappeAPIRequestOptions {
 }
 
 /**
- * Creates an authenticated fetch request with CSRF token
+ * Handle authentication errors in API responses
  */
-export const createAuthenticatedFetch = (
+const handleAuthError = async (response: Response) => {
+  if (response.status === 401 || response.status === 403) {
+    console.warn('Authentication error detected in API response');
+    
+    // Double-check token validity
+    const tokenInfo = await checkTokenValidity();
+    if (!tokenInfo.isValid) {
+      handleTokenExpiry();
+      return;
+    }
+  }
+};
+
+/**
+ * Creates an authenticated fetch request with CSRF token and auth error handling
+ */
+export const createAuthenticatedFetch = async (
   url: string,
   options: FrappeAPIRequestOptions = {}
 ): Promise<Response> => {
@@ -44,13 +62,23 @@ export const createAuthenticatedFetch = (
     fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
   }
 
-  return fetch(url, fetchOptions);
+  try {
+    const response = await fetch(url, fetchOptions);
+    
+    // Handle authentication errors
+    await handleAuthError(response);
+    
+    return response;
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw error;
+  }
 };
 
 /**
  * Shorthand for Frappe API method calls
  */
-export const frappeMethodCall = (
+export const frappeMethodCall = async (
   method: string,
   data: any = {},
   options: Omit<FrappeAPIRequestOptions, 'body'> = {}
@@ -65,7 +93,7 @@ export const frappeMethodCall = (
 /**
  * Shorthand for Frappe resource API calls
  */
-export const frappeResourceCall = (
+export const frappeResourceCall = async (
   doctype: string,
   name?: string,
   options: FrappeAPIRequestOptions = {}
