@@ -17,7 +17,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     try {
       await logout();
       // Optionally redirect to login page
-      window.location.href = 'http://localhost:8007/login';
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
     }
