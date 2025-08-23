@@ -39,7 +39,8 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   const { data: taskSubTasks, isLoading: subtasksLoading, mutate: mutateSubTasks } = useFrappeGetDocList('SubTask', {
     fields: ['name', 'subject', 'task', 'status', 'progress', 'start_date', 'end_date', 'description'],
     filters: [['task', '=', task.name]],
-    orderBy: { field: 'start_date', order: 'asc' }
+    orderBy: { field: 'start_date', order: 'asc' },
+    limit: 0 // Get all subtasks
   });
 
   // Fetch assignment information for this task

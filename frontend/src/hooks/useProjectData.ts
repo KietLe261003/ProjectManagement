@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
-import type { FilteredData, Project, Phase, Task, Timesheet } from '../types';
+import { useFrappeGetDocList} from 'frappe-react-sdk';
+import type { FilteredData, Project, Task, Timesheet } from '../types';
 
 export const useProjectData = () => {
   const [selectedProject, setSelectedProject] = useState<string>('all');
@@ -15,7 +15,6 @@ export const useProjectData = () => {
   const { 
     data: projectsData, 
     isLoading: projectsLoading,
-    error: projectsError
   } = useFrappeGetDocList<Project>('Project', {
     fields: [
       'name',
@@ -33,9 +32,9 @@ export const useProjectData = () => {
   const { 
     data: phasesListData, 
     isLoading: phasesLoading,
-    error: phasesError
   } = useFrappeGetDocList<any>('project_phase', {
-    fields: ['name'] // Chỉ cần name để fetch từng doc riêng
+    fields: ['name'], // Chỉ cần name để fetch từng doc riêng
+    limit: 0 // Get all phases
   });
 
   // Fetch từng Phase document riêng lẻ để lấy child tables
@@ -97,7 +96,6 @@ export const useProjectData = () => {
   const { 
     data: tasksData, 
     isLoading: tasksLoading,
-    error: tasksError
   } = useFrappeGetDocList<Task>('Task', {
     fields: [
       'name', 
@@ -108,7 +106,8 @@ export const useProjectData = () => {
       'project',
       'progress',
       'priority','is_group',
-    ]
+    ],
+    limit: 0 // Get all tasks
   });
 
   // Fetch Timesheets from API
@@ -116,7 +115,8 @@ export const useProjectData = () => {
     data: timesheetsData, 
     isLoading: timesheetsLoading 
   } = useFrappeGetDocList<Timesheet>('Timesheet', {
-    fields: ['name', 'total_hours']
+    fields: ['name', 'total_hours'],
+    limit: 0 // Get all timesheets
   });
 
   // Process API data with default values
