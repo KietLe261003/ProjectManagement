@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { X } from 'lucide-react';
 
 interface CreateStandaloneTaskProps {
   isOpen: boolean;
@@ -80,14 +79,6 @@ export const CreateStandaloneTask: React.FC<CreateStandaloneTaskProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             Create Standalone Task
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </DialogTitle>
         </DialogHeader>
 
