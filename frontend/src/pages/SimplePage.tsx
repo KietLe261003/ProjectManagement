@@ -20,7 +20,6 @@ export const SimplePage: React.FC<SimplePageProps> = ({ title, description }) =>
             <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
               <span className="text-4xl">🚧</span>
             </div>
-            <p className="text-lg">This page is under construction</p>
             <p className="text-sm mt-2">More features coming soon!</p>
           </div>
         </div>
