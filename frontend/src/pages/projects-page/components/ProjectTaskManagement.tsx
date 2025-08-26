@@ -24,6 +24,12 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   const [isCreatePhaseModalOpen, setIsCreatePhaseModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [phasesWithTasks, setPhasesWithTasks] = useState<any[]>([]);
+  const [tooltip, setTooltip] = useState<{
+    visible: boolean;
+    text: string;
+    x: number;
+    y: number;
+  }>({ visible: false, text: '', x: 0, y: 0 });
 
   // Fetch project phases list first
   const { data: phasesList, isLoading: phasesLoading, mutate: mutatePhases } = useFrappeGetDocList('project_phase', {
@@ -146,6 +152,29 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     }
   };
 
+  // Helper functions for tooltip
+  const showTooltip = (text: string, event: React.MouseEvent) => {
+    if (text.length > 30) { // Only show tooltip for long text
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      
+      // Always position tooltip at the start of the table (fixed left position)
+      // Find the table container to get consistent left position
+      const tableContainer = document.querySelector('.bg-white.border.border-gray-200.rounded-lg');
+      const tableRect = tableContainer?.getBoundingClientRect();
+      
+      setTooltip({
+        visible: true,
+        text,
+        x: tableRect ? tableRect.left + 24 : 50, // Use table's left edge + padding, or fallback to 50px
+        y: rect.top - 8, // Position above the current element
+      });
+    }
+  };
+
+  const hideTooltip = () => {
+    setTooltip({ visible: false, text: '', x: 0, y: 0 });
+  };
+
   // Render individual task/subtask item
   const renderTaskItem = (
     item: any, 
@@ -155,7 +184,19 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     isExpanded: boolean = false,
     onToggle?: () => void
   ) => {
-    const indentClass = level > 0 ? `pl-${level * 6}` : 'pl-6';
+    // Create indentation for name column only
+    let nameColumnStyle = {};
+    let nameColumnClass = '';
+    
+    if (level === 1) {
+      nameColumnClass = 'pl-8';
+      nameColumnStyle = { paddingLeft: '2rem' };
+    } else if (level === 2) {
+      nameColumnClass = 'pl-16';
+      nameColumnStyle = { paddingLeft: '4rem' };
+    } else if (level > 2) {
+      nameColumnStyle = { paddingLeft: `${1 + (level * 1)}rem` };
+    }
     
     let icon = '';
     let iconClass = 'mr-3 text-lg';
@@ -201,14 +242,54 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
       }
     };
 
+    // Handle double click for view details
+    const handleDoubleClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (type === 'phase' && onViewPhaseDetails) {
+        onViewPhaseDetails(item);
+      } else if ((type === 'task' || type === 'phase-task') && onViewTaskDetails) {
+        onViewTaskDetails(item);
+      } else if (type === 'subtask' && onViewSubTaskDetails) {
+        onViewSubTaskDetails(item);
+      }
+    };
+
+    // Handle single click for toggle (only for expandable items)
+    const handleSingleClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (hasChildren && onToggle) {
+        onToggle();
+      }
+    };
+
+    // Create background color based on level for better visual hierarchy
+    let backgroundClass = 'hover:bg-gray-50';
+    let borderClass = '';
+    
+    if (level === 1) {
+      backgroundClass = 'bg-blue-50/30 hover:bg-blue-50';
+      borderClass = 'border-l-4 border-l-blue-300';
+    } else if (level === 2) {
+      backgroundClass = 'bg-green-50/30 hover:bg-green-50';
+      borderClass = 'border-l-4 border-l-green-300';
+    }
+
     return (
       <div 
         key={`${type}-${item.name}`} 
-        className="hover:bg-gray-50 transition-colors"
+        className={`${backgroundClass} ${borderClass} transition-colors`}
       >
-        <div className={`grid grid-cols-12 gap-4 py-3 px-6 border-b border-gray-100 items-center ${indentClass}`}>
-          {/* Task/Phase Name Column */}
-          <div className="col-span-6 flex items-center">
+        <div 
+          className="grid grid-cols-12 gap-4 py-3 px-6 border-b border-gray-100 items-center cursor-pointer"
+          onClick={handleSingleClick}
+          onDoubleClick={handleDoubleClick}
+        >
+          {/* Task/Phase Name Column - Only this column gets indented */}
+          <div className={`col-span-5 flex items-center ${nameColumnClass}`} style={level > 0 ? nameColumnStyle : {}}>
             <span 
               className={iconClass}
               onClick={handleIconClick}
@@ -219,27 +300,46 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
             </span>
             <span className="mr-2 text-lg">{prefixIcon}</span>
             {getStatusIcon(status)}
-            <div className="ml-3 flex-1">
-              <div className={`font-medium ${type === 'phase' ? 'text-blue-900 text-lg' : type === 'task' ? 'text-orange-900' : type === 'phase-task' ? 'text-green-900' : 'text-gray-700'}`}>
+            <div className="ml-3 flex-1 min-w-0">
+              <div 
+                className={`font-medium truncate ${type === 'phase' ? 'text-blue-900 text-lg' : type === 'task' ? 'text-orange-900' : type === 'phase-task' ? 'text-green-900' : 'text-gray-700'}`}
+                onMouseEnter={(e) => showTooltip(displayName, e)}
+                onMouseLeave={hideTooltip}
+                title={displayName.length > 30 ? displayName : undefined}
+              >
                 {displayName}
               </div>
               {item.description && type === 'subtask' && (
-                <p className="text-sm text-gray-500 mt-1">{item.description}</p>
+                <p 
+                  className="text-sm text-gray-500 mt-1 truncate"
+                  onMouseEnter={(e) => showTooltip(item.description, e)}
+                  onMouseLeave={hideTooltip}
+                  title={item.description.length > 50 ? item.description : undefined}
+                >
+                  {item.description}
+                </p>
               )}
               {item.details && type === 'phase' && (
-                <p className="text-sm text-gray-600 mt-1">{item.details}</p>
+                <p 
+                  className="text-sm text-gray-600 mt-1 truncate"
+                  onMouseEnter={(e) => showTooltip(item.details, e)}
+                  onMouseLeave={hideTooltip}
+                  title={item.details.length > 50 ? item.details : undefined}
+                >
+                  {item.details}
+                </p>
               )}
             </div>
           </div>
           
-          {/* Status Column */}
+          {/* Status Column - Always aligned */}
           <div className="col-span-2 text-center">
             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(status)}`}>
               {status}
             </span>
           </div>
           
-          {/* Priority Column */}
+          {/* Priority Column - Always aligned */}
           <div className="col-span-2 text-center">
             {item.priority && (
               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(item.priority)}`}>
@@ -248,62 +348,65 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
             )}
           </div>
           
-          {/* Progress Column */}
-          <div className="col-span-2 flex items-center justify-center space-x-2">
-            <div className={`${type === 'phase' ? 'w-20' : 'w-16'} bg-gray-200 rounded-full h-2`}>
-              <div
-                className={`${
-                  type === 'phase' ? 'bg-blue-600' : 
-                  type === 'task' ? 'bg-orange-600' : 
-                  type === 'phase-task' ? 'bg-green-600' : 
-                  'bg-purple-600'
-                } h-2 rounded-full transition-all duration-300`}
-                style={{ width: `${progress}%` }}
-              ></div>
+          {/* Progress Column - Always aligned, hidden for subtasks */}
+          <div className="col-span-3 flex items-center justify-start space-x-2">
+            {type !== 'subtask' && (
+              <>
+                <div className={`${type === 'phase' ? 'w-20' : 'w-16'} bg-gray-200 rounded-full h-2`}>
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+                <span className="text-sm text-gray-600 w-12 text-left flex-shrink-0">{progress}%</span>
+              </>
+            )}
+            
+            {/* View Details buttons - positioned consistently for all types */}
+            <div className="ml-auto">
+              {type === 'phase' && onViewPhaseDetails && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onViewPhaseDetails(item);
+                  }}
+                  className="h-7 px-2 text-xs"
+                >
+                  View Details
+                </Button>
+              )}
+              {(type === 'task' || type === 'phase-task') && onViewTaskDetails && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onViewTaskDetails(item);
+                  }}
+                  className="h-7 px-2 text-xs"
+                >
+                  View Details
+                </Button>
+              )}
+              {type === 'subtask' && onViewSubTaskDetails && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onViewSubTaskDetails(item);
+                  }}
+                  className="h-7 px-2 text-xs"
+                >
+                  View Details
+                </Button>
+              )}
             </div>
-            <span className="text-sm text-gray-600 w-8 text-right">{progress}%</span>
-            {type === 'phase' && onViewPhaseDetails && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onViewPhaseDetails(item);
-                }}
-                className="ml-2 h-7 px-2 text-xs"
-              >
-                View Details
-              </Button>
-            )}
-            {(type === 'task' || type === 'phase-task') && onViewTaskDetails && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onViewTaskDetails(item);
-                }}
-                className="ml-2 h-7 px-2 text-xs"
-              >
-                View Details
-              </Button>
-            )}
-            {type === 'subtask' && onViewSubTaskDetails && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onViewSubTaskDetails(item);
-                }}
-                className="ml-2 h-7 px-2 text-xs"
-              >
-                View Details
-              </Button>
-            )}
           </div>
         </div>
       </div>
@@ -359,10 +462,10 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
       <div className="bg-white border border-gray-200 rounded-lg">
         {/* Header Row */}
         <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
-          <div className="col-span-6">Task / Phase</div>
+          <div className="col-span-5">Task / Phase</div>
           <div className="col-span-2 text-center">Status</div>
           <div className="col-span-2 text-center">Priority</div>
-          <div className="col-span-2 text-center">Progress</div>
+          <div className="col-span-3 text-left">Progress</div>
         </div>
 
         <div className="divide-y divide-gray-100">
@@ -568,6 +671,28 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
           mutateTasks(); // Refresh tasks data
         }}
       />
+
+      {/* Tooltip */}
+      {tooltip.visible && (
+        <div 
+          className="fixed z-50 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-xl pointer-events-none border border-gray-700"
+          style={{ 
+            left: tooltip.x, 
+            top: tooltip.y,
+            transform: 'translateY(-100%)',
+            maxWidth: '400px', // Reasonable max width
+            minWidth: '200px',
+            wordWrap: 'break-word'
+          }}
+        >
+          <div className="font-medium leading-relaxed">{tooltip.text}</div>
+          {/* Small arrow pointing down, positioned at the start */}
+          <div 
+            className="absolute top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"
+            style={{ left: '20px' }}
+          ></div>
+        </div>
+      )}
     </div>
   );
 };
