@@ -6,7 +6,7 @@ import { useUserProjects } from '@/services';
 import CreateProject from './components/project/CreateProject';
 
 export const ProjectsPage: React.FC = () => {
-  const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('list');
   
   // Use centralized project service
   const { data: projects = [], isLoading, error, mutate } = useUserProjects();
