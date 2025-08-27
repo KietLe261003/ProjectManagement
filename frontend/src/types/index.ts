@@ -5,13 +5,15 @@ export interface Project {
   status: string;
   customer: string;
   company: string;
+  department?: string;
+  team?: string;
   expected_start_date: string;
   expected_end_date: string;
   actual_start_date: string;
   actual_end_date: string | null;
   percent_complete: number;
   priority: string;
-  project_cost: number;
+  estimated_costing: number;
   total_billable_amount: number;
   total_billed_amount: number;
   gross_margin: number;
@@ -20,17 +22,46 @@ export interface Project {
   is_active: boolean;
 }
 
+export interface Phase {
+  name: string;
+  subject?: string; // Tên phase
+  project?: string;
+  status?: "Open" | "Working" | "Completed";
+  priority?: "Low" | "Medium" | "High" | "Urgent";
+  department?: string;
+  start_date?: string;
+  end_date?: string;
+  progress?: number;
+  details?: string;
+  costing?: number;
+  tasks?: PhaseTask[];
+  // Để backward compatibility
+  phase_name?: string;
+  expected_start_date?: string;
+  expected_end_date?: string;
+  actual_start_date?: string;
+  actual_end_date?: string | null;
+  description?: string;
+}
+
+export interface PhaseTask {
+  name: string;
+  task?: string; 
+  task_name?: string;
+}
+
 export interface Task {
   name: string;
   subject: string;
   project: string;
+  phase?: string;
   status: string;
   priority: string;
   type: string;
   expected_time: number;
   actual_time: number;
-  start_date: string;
-  end_date: string;
+  exp_start_date: string;
+  exp_end_date: string;
   progress: number;
   assigned_to: string | null;
   is_group: boolean;
@@ -53,6 +84,10 @@ export interface Timesheet {
 
 export interface FilteredData {
   filteredProjects: Project[];
+  filteredPhases: Phase[];
   filteredTasks: Task[];
   filteredTimesheets: Timesheet[];
 }
+
+// Export ToDo interface
+export type { ToDo } from './Todo/ToDo';

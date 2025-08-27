@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Management</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .loading {
+            text-align: center;
+            color: white;
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>Đang chuyển hướng...</p>
+    </div>
+    
+    <script src="/assets/frappe/js/lib/jquery.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Check login status and redirect appropriately
+            $.ajax({
+                url: '/api/method/todo.auth_api.get_login_status',
+                type: 'GET',
+                success: function(response) {
+                    if (response.message && response.message.logged_in) {
+                        // User is logged in, redirect to appropriate page
+                        window.location.href = response.message.redirect_to;
+                    } else {
+                        // User is not logged in, redirect to login
+                        window.location.href = '/login';
+                    }
+                },
+                error: function() {
+                    // Default to login page if error
+                    window.location.href = '/login';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
