@@ -13,6 +13,7 @@ export * from './projectProgressService';
 export * from './projectCascadeDeleteService';
 export * from './todoService';
 export * from './authService';
+export * from './userAssignedTaskService';
 
 // Re-export commonly used hooks
 export {

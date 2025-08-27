@@ -1,3 +1,4 @@
+import type { table_user } from './table_user'
 
 export interface Team{
 	name: string
@@ -14,4 +15,6 @@ export interface Team{
 	team?: string
 	/**	Department : Link - Department	*/
 	department?: string
+	/**	User Table : Table - table_user	*/
+	user_table?: table_user[]
 }

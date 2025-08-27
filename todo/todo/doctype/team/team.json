@@ -8,7 +8,8 @@
  "field_order": [
   "section_break_7f8l",
   "team",
-  "department"
+  "department",
+  "user_table"
  ],
  "fields": [
   {
@@ -26,13 +27,19 @@
    "fieldtype": "Link",
    "label": "Department",
    "options": "Department"
+  },
+  {
+   "fieldname": "user_table",
+   "fieldtype": "Table",
+   "label": "User Table",
+   "options": "table_user"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-20 11:06:29.813689",
- "modified_by": "Administrator",
+ "modified": "2025-08-27 11:16:20.673570",
+ "modified_by": "abcxyz@gmail.com",
  "module": "Todo",
  "name": "Team",
  "naming_rule": "By fieldname",
@@ -47,6 +54,30 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
    "share": 1,
    "write": 1
   }
