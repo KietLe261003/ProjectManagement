@@ -107,8 +107,8 @@ export const ProjectMilestonesTeam: React.FC<ProjectMilestonesTeamProps> = ({ pr
         endDate.setHours(0, 0, 0, 0);
         const daysDiff = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         
-        // Tasks sắp đến hạn trong vòng 30 ngày tới (không bao gồm quá hạn)
-        return daysDiff >= 0 && daysDiff <= 30;
+        // Tasks sắp đến hạn trong vòng 2 ngày tới (không bao gồm quá hạn)
+        return daysDiff >= 0 && daysDiff <= 2;
       })
       .sort((a, b) => {
         const today = new Date();
@@ -258,7 +258,7 @@ export const ProjectMilestonesTeam: React.FC<ProjectMilestonesTeamProps> = ({ pr
       <Card title={isProjectSpecific ? (
           <>
             <span className="font-bold bg-yellow-200 px-1 rounded">Tasks</span>{" "}
-            gần <span className="text-red-600 font-semibold">đến hạn </span> (&lt;30 ngày)
+            gần <span className="text-red-600 font-semibold">đến hạn </span> (&lt;2 ngày)
           </>
         ) : (
           <>
