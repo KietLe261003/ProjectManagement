@@ -55,9 +55,6 @@ export class PhaseTaskService {
           exp_end_date: taskData.exp_end_date || null,
           project: taskData.project
         });
-
-        console.log('Task created successfully:', createdTask);
-
         // Step 1.5: Create ToDo if assign_to is provided
         let todoResult = null;
         if (taskData.assign_to && createdTask) {
@@ -75,7 +72,6 @@ export class PhaseTaskService {
                 date: new Date().toISOString().split('T')[0] // Today's date
               }
             });
-            console.log('ToDo created successfully:', todoResult);
           } catch (todoError) {
             console.error('Error creating ToDo:', todoError);
             // Don't fail the entire operation if ToDo creation fails

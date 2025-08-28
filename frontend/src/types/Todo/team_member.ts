@@ -1,5 +1,5 @@
 
-export interface table_user{
+export interface team_member{
 	name: string
 	creation: string
 	modified: string
