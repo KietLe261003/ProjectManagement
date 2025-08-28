@@ -11,10 +11,12 @@ export const ProjectsPage: React.FC = () => {
   // Use centralized project service
   const { data: projects = [], isLoading, error, mutate } = useUserProjects();
 
-  const handleProjectsChange = () => {
+  const handleProjectsChange = async () => {
     // Refresh projects list when a project is updated or deleted
+    console.log('handleProjectsChange called, mutate function exists:', !!mutate);
     if (mutate) {
-      mutate();
+      console.log('Calling mutate to refresh projects data...');
+      await mutate();
     }
   };
 

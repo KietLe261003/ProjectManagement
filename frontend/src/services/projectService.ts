@@ -49,6 +49,8 @@ export class ProjectService {
   static readonly PROJECT_FIELDS = [
     'name',
     'owner',
+    'creation',
+    'modified',
     'project_name',
     'project_type',
     'status',
@@ -93,12 +95,20 @@ export class ProjectService {
     const { data: ownedProjects, isLoading: loadingOwned, error: errorOwned, mutate: mutateOwned } = useFrappeGetDocList('Project', {
       fields: ProjectService.PROJECT_FIELDS,
       filters: currentUser ? [['owner', '=', currentUser]] : [],
+      orderBy: { field: 'modified', order: 'desc' }
+    }, undefined, {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true
     });
 
     // Fetch all accessible projects as fallback
     const { data: allProjects, isLoading: loadingAll, error: errorAll, mutate: mutateAll } = useFrappeGetDocList('Project', {
       fields: ProjectService.PROJECT_FIELDS,
-      limit: 0
+      limit: 0,
+      orderBy: { field: 'modified', order: 'desc' }
+    }, undefined, {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true
     });
 
     // Filter and combine projects
@@ -115,6 +125,8 @@ export class ProjectService {
             const project = {
               name: row.name,
               owner: row.owner,
+              creation: row.creation,
+              modified: row.modified,
               project_name: row.project_name,
               project_type: row.project_type,
               status: row.status,
@@ -149,7 +161,12 @@ export class ProjectService {
           }
         });
 
-        return Array.from(projectMap.values());
+        return Array.from(projectMap.values()).sort((a, b) => {
+          // Sort by modified date descending (most recent first)
+          const aDate = new Date(a.modified || a.creation || 0);
+          const bDate = new Date(b.modified || b.creation || 0);
+          return bDate.getTime() - aDate.getTime();
+        });
       };
 
       let combinedProjects: any[] = [];
@@ -174,9 +191,14 @@ export class ProjectService {
     }, [ownedProjects, allProjects, currentUser]);
 
     // Combined mutate function to refresh both queries
-    const mutate = React.useCallback(() => {
-      mutateOwned();
-      mutateAll();
+    const mutate = React.useCallback(async () => {
+      console.log('Mutating ownedProjects and allProjects...');
+      try {
+        await Promise.all([mutateOwned(), mutateAll()]);
+        console.log('Data refreshed successfully');
+      } catch (error) {
+        console.error('Error refreshing data:', error);
+      }
     }, [mutateOwned, mutateAll]);
 
     return {

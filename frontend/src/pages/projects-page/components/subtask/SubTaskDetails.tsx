@@ -79,14 +79,13 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
         await calculateAndUpdateTaskProgress(subtask.task);
         
         // Cập nhật progress của phase chứa task này
-        setTimeout(async () => {
-          try {
-            await updatePhaseProgressForTask(subtask.task, projectName);
-            console.log('Phase progress updated after subtask edit');
-          } catch (error) {
-            console.error('Error updating phase progress after subtask edit:', error);
-          }
-        }, 500);
+        try {
+          console.log(`Updating phase progress for task ${subtask.task} in project ${projectName}`);
+          await updatePhaseProgressForTask(subtask.task, projectName);
+          console.log('Phase and project progress updated after subtask edit');
+        } catch (error) {
+          console.error('Error updating phase progress after subtask edit:', error);
+        }
         
       } catch (error) {
         console.error('Error updating task progress after subtask edit:', error);
@@ -105,14 +104,13 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
         await calculateAndUpdateTaskProgress(subtask.task);
         
         // Cập nhật progress của phase chứa task này
-        setTimeout(async () => {
-          try {
-            await updatePhaseProgressForTask(subtask.task, projectName);
-            console.log('Phase progress updated after subtask delete');
-          } catch (error) {
-            console.error('Error updating phase progress after subtask delete:', error);
-          }
-        }, 500);
+        try {
+          console.log(`Updating phase progress for task ${subtask.task} in project ${projectName}`);
+          await updatePhaseProgressForTask(subtask.task, projectName);
+          console.log('Phase and project progress updated after subtask delete');
+        } catch (error) {
+          console.error('Error updating phase progress after subtask delete:', error);
+        }
         
       } catch (error) {
         console.error('Error updating task progress after subtask delete:', error);

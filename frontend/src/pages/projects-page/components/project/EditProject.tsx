@@ -69,9 +69,11 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
       
       toast.success("Project updated successfully");
       
-      // Call success callback if provided
+      // Call success callback if provided with small delay to ensure DB is updated
       if (onSuccess) {
-        onSuccess();
+        setTimeout(() => {
+          onSuccess();
+        }, 100);
       }
       
       onClose();

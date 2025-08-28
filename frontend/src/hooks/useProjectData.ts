@@ -46,7 +46,7 @@ export const useProjectData = () => {
       }
 
       setPhasesTasksLoading(true);
-      console.log('🔄 Fetching individual phase documents for tasks...');
+      // console.log('🔄 Fetching individual phase documents for tasks...');
 
       try {
         const phasesWithTasksPromises = phasesListData.map(async (phaseItem: any) => {
@@ -67,8 +67,8 @@ export const useProjectData = () => {
             const result = await response.json();
             const fullPhase = result.data || result;
             
-            console.log(`✅ Phase ${phaseItem.name} full data:`, fullPhase);
-            console.log(`📋 Phase ${phaseItem.name} tasks:`, fullPhase.tasks);
+            // console.log(`✅ Phase ${phaseItem.name} full data:`, fullPhase);
+            // console.log(`📋 Phase ${phaseItem.name} tasks:`, fullPhase.tasks);
             
             return fullPhase;
           } catch (error) {
@@ -80,7 +80,7 @@ export const useProjectData = () => {
         const results = await Promise.all(phasesWithTasksPromises);
         const validPhases = results.filter(phase => phase !== null);
         
-        console.log('🎉 All phases with tasks loaded:', validPhases);
+        // console.log('🎉 All phases with tasks loaded:', validPhases);
         setPhasesWithTasks(validPhases);
       } catch (error) {
         console.error('💥 Error in fetchPhasesWithTasks:', error);
@@ -150,7 +150,7 @@ export const useProjectData = () => {
       // Phase đã có full data bao gồm tasks
       const phaseTasks = phase.tasks || [];
       
-      console.log(`📊 Processing Phase ${phase.name} with ${phaseTasks.length} tasks:`, phaseTasks);
+      // console.log(`📊 Processing Phase ${phase.name} with ${phaseTasks.length} tasks:`, phaseTasks);
       
       return {
         ...phase,
