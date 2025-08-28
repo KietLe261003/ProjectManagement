@@ -25,6 +25,7 @@ export interface ProjectCreateData {
   status: string;
   priority?: string;
   department?: string;
+  team?: string;
   company?: string;
   cost_center?: string;
   project_template?: string;
@@ -56,6 +57,7 @@ export class ProjectService {
     'status',
     'customer',
     'department',
+    'team',
     'expected_start_date',
     'expected_end_date',
     'percent_complete',
@@ -136,6 +138,7 @@ export class ProjectService {
               percent_complete: row.percent_complete,
               priority: row.priority,
               department: row.department,
+              team: row.team || null, // Add fallback for team field
               estimated_costing: row.estimated_costing,
               total_billable_amount: row.total_billable_amount,
               company: row.company,

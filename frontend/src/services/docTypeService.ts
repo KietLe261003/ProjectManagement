@@ -74,6 +74,13 @@ export class DocTypeService {
       fields: ['name', 'project_template_name']
     });
   }
+
+  // Team options
+  static useTeams() {
+    return DocTypeService.useDocTypeOptions('Team', {
+      fields: ['name', 'team', 'department']
+    });
+  }
 }
 
 // Export individual hooks for easier usage
@@ -83,4 +90,5 @@ export const useProjectTypes = DocTypeService.useProjectTypes;
 export const useDepartments = DocTypeService.useDepartments;
 export const useCostCenters = DocTypeService.useCostCenters;
 export const useProjectTemplates = DocTypeService.useProjectTemplates;
+export const useTeams = DocTypeService.useTeams;
 export const useDocTypeOptions = DocTypeService.useDocTypeOptions;

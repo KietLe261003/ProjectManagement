@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Download, Trash2, File, FileText, Image, Archive, Eye } from 'lucide-react';
+import { Upload, Download, Trash2, File, FileText, Image, Archive, Eye, Link, ExternalLink } from 'lucide-react';
 import { useFrappePostCall, useFrappeGetDocList, useFrappeAuth } from 'frappe-react-sdk';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 interface FileAttachment {
@@ -35,10 +37,13 @@ export function FileAttachments({
   allowDelete = true,
   className = ""
 }: FileAttachmentsProps) {
-  const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkTitle, setLinkTitle] = useState('');
+  const [isAttachingLink, setIsAttachingLink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { currentUser } = useFrappeAuth();
@@ -56,9 +61,14 @@ export function FileAttachments({
 
   const { call: deleteFile } = useFrappePostCall('frappe.client.delete');
 
-  // Get file icon based on file extension
-  const getFileIcon = (fileName: string) => {
-    const extension = fileName.split('.').pop()?.toLowerCase();
+  // Get file icon based on file extension or type
+  const getFileIcon = (file: FileAttachment) => {
+    // Check if it's a link attachment
+    if (isLinkAttachment(file)) {
+      return <Link className="h-6 w-6 text-blue-500" />;
+    }
+    
+    const extension = file.file_name.split('.').pop()?.toLowerCase();
     
     switch (extension) {
       case 'pdf':
@@ -229,38 +239,61 @@ export function FileAttachments({
     }
   };
 
-  // Handle drag and drop
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (allowUpload) {
-      setIsDragging(true);
+  // Handle link attachment
+  const handleAttachLink = async () => {
+    if (!linkUrl.trim()) {
+      toast.error('Please enter a URL');
+      return;
     }
-  };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only set dragging false if we're leaving the actual drop zone
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsDragging(false);
+    // Basic URL validation
+    try {
+      new URL(linkUrl);
+    } catch {
+      toast.error('Please enter a valid URL');
+      return;
     }
-  };
 
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+    setIsAttachingLink(true);
     
-    if (!allowUpload) return;
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      await handleFileUpload(files);
+    try {
+      // Create a File record for the link
+      const response = await fetch('/api/method/frappe.client.insert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          doc: {
+            doctype: 'File',
+            file_name: linkTitle.trim() || linkUrl,
+            file_url: linkUrl,
+            attached_to_doctype: doctype,
+            attached_to_name: docname,
+            is_private: 0
+          }
+        }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to attach link');
+      }
+
+      // Reset form and close dialog
+      setLinkUrl('');
+      setLinkTitle('');
+      setShowLinkDialog(false);
+      
+      // Refresh attachments
+      await refreshAttachments();
+      toast.success('Link attached successfully');
+      
+    } catch (error) {
+      console.error('Error attaching link:', error);
+      toast.error('Failed to attach link');
+    } finally {
+      setIsAttachingLink(false);
     }
   };
 
@@ -284,6 +317,35 @@ export function FileAttachments({
   const isImageFile = (fileName: string) => {
     const extension = fileName.split('.').pop()?.toLowerCase();
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '');
+  };
+
+  // Check if attachment is a link
+  const isLinkAttachment = (file: FileAttachment) => {
+    // Debug: log file data to understand the structure
+    console.log('Checking file:', {
+      file_name: file.file_name,
+      file_url: file.file_url,
+      file_size: file.file_size
+    });
+    
+    // Check if file_url is an external URL and one of these conditions:
+    // 1. file_size is 0 (typical for link attachments)
+    // 2. file_name is also a URL
+    // 3. file doesn't have a file extension (indicating it's likely a link with custom title)
+    const isExternalUrl = file.file_url.startsWith('http://') || file.file_url.startsWith('https://');
+    const hasNoSize = file.file_size === 0;
+    const fileNameIsUrl = file.file_name.startsWith('http://') || file.file_name.startsWith('https://');
+    const hasNoExtension = !file.file_name.includes('.') || file.file_name.split('.').length < 2;
+    
+    const result = isExternalUrl && (hasNoSize || fileNameIsUrl || hasNoExtension);
+    console.log('isLinkAttachment result:', result, {
+      isExternalUrl,
+      hasNoSize,
+      fileNameIsUrl,
+      hasNoExtension
+    });
+    
+    return result;
   };
 
   // Check if user can delete file
@@ -315,6 +377,16 @@ export function FileAttachments({
               <Upload className="h-4 w-4 mr-1" />
               {isUploading ? 'Uploading...' : 'Upload Files'}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowLinkDialog(true)}
+              disabled={isUploading || isAttachingLink}
+              className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            >
+              <Link className="h-4 w-4 mr-1" />
+              Attach Link
+            </Button>
             <input
               ref={fileInputRef}
               type="file"
@@ -327,47 +399,6 @@ export function FileAttachments({
           </div>
         )}
       </div>
-
-      {/* Drag and Drop Area */}
-      {allowUpload && (
-        <div
-          className={`border-2 border-dashed rounded-lg p-6 mb-6 transition-colors cursor-pointer ${
-            isUploading
-              ? 'border-green-500 bg-green-50'
-              : isDragging 
-              ? 'border-blue-500 bg-blue-50' 
-              : 'border-gray-300 hover:border-gray-400'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => !isUploading && fileInputRef.current?.click()}
-        >
-          <div className="text-center pointer-events-none">
-            {isUploading ? (
-              <>
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-                <p className="mt-2 text-sm text-green-600 font-medium">
-                  Uploading files...
-                </p>
-              </>
-            ) : (
-              <>
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-sm text-gray-600">
-                  <span className="font-medium text-blue-600">
-                    Click to upload
-                  </span>{' '}
-                  or drag and drop
-                </p>
-                <p className="text-xs text-gray-500">
-                  Any file type, up to 25MB per file
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Loading State */}
       {isLoading && (
@@ -388,7 +419,7 @@ export function FileAttachments({
                   className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex-shrink-0">
-                    {getFileIcon(file.file_name)}
+                    {getFileIcon(file)}
                   </div>
                   
                   <div className="flex-1 min-w-0">
@@ -414,7 +445,7 @@ export function FileAttachments({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {isImageFile(file.file_name) && (
+                    {isImageFile(file.file_name) && !isLinkAttachment(file) && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -432,8 +463,17 @@ export function FileAttachments({
                       onClick={() => window.open(file.file_url, '_blank')}
                       className="text-xs"
                     >
-                      <Download className="h-3 w-3 mr-1" />
-                      Download
+                      {isLinkAttachment(file) ? (
+                        <>
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Open Link
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-3 w-3 mr-1" />
+                          Download
+                        </>
+                      )}
                     </Button>
 
                     {canDeleteFile(file) && (
@@ -465,6 +505,79 @@ export function FileAttachments({
           )}
         </>
       )}
+
+      {/* Attach Link Dialog */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link className="h-5 w-5" />
+              Attach Link
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="link-url" className="text-sm font-medium">
+                URL *
+              </Label>
+              <Input
+                id="link-url"
+                type="url"
+                placeholder="https://example.com"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="link-title" className="text-sm font-medium">
+                Title (optional)
+              </Label>
+              <Input
+                id="link-title"
+                type="text"
+                placeholder="Enter a descriptive title"
+                value={linkTitle}
+                onChange={(e) => setLinkTitle(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={handleAttachLink}
+                disabled={!linkUrl.trim() || isAttachingLink}
+                className="flex-1"
+              >
+                {isAttachingLink ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Attaching...
+                  </>
+                ) : (
+                  <>
+                    <Link className="h-4 w-4 mr-2" />
+                    Attach Link
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowLinkDialog(false);
+                  setLinkUrl('');
+                  setLinkTitle('');
+                }}
+                disabled={isAttachingLink}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* File Preview Modal */}
       {showPreview && previewFile && (

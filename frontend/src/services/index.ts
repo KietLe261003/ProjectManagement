@@ -47,5 +47,6 @@ export {
   useDepartments,
   useCostCenters,
   useProjectTemplates,
+  useTeams,
   useDocTypeOptions
 } from './docTypeService';
