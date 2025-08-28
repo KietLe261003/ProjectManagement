@@ -6,6 +6,7 @@ import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
 import EditPhase from './EditPhase';
 import DeletePhase from './DeletePhase';
 import { usePhaseProgressCalculation } from '@/services/phaseProgressService';
+import { FileAttachments } from '@/components/FileAttachments';
 
 interface PhaseDetailsProps {
   phase: any;
@@ -522,6 +523,16 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
           </div>
         )}
       </div>
+
+      {/* Phase Files Section */}
+      <FileAttachments
+        doctype="project_phase"
+        docname={phase.name}
+        title="Phase Files"
+        allowUpload={true}
+        allowDelete={true}
+        className="mt-8"
+      />
 
       {/* Create Task Modal */}
       <CreateTask

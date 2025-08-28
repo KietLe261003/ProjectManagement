@@ -6,6 +6,7 @@ import { useTaskProgressCalculation } from '@/services/taskProgressService';
 import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate';
 import EditSubTask from './EditSubTask';
 import DeleteSubTask from './DeleteSubTask';
+import { FileAttachments } from '@/components/FileAttachments';
 
 interface SubTaskDetailsProps {
   subtask: any;
@@ -320,6 +321,16 @@ export const SubTaskDetails: React.FC<SubTaskDetailsProps> = ({
           <div className="text-sm">Activity and updates will appear here when available</div>
         </div>
       </div>
+
+      {/* SubTask Files Section */}
+      <FileAttachments
+        doctype="SubTask"
+        docname={subtask.name}
+        title="SubTask Files"
+        allowUpload={true}
+        allowDelete={true}
+        className="mt-8"
+      />
 
       {/* Edit SubTask Dialog */}
       <EditSubTask

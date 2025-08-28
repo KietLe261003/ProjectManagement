@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Calendar, DollarSign, User, Users, Crown, Plus, Edit, Trash2, RefreshCw } from "lucide-react"
+import { Calendar, DollarSign, User, Users, Crown, Plus, Edit, Trash2 } from "lucide-react"
 import { useFrappeGetDoc, useFrappePostCall, useFrappeAuth, useFrappeGetDocList } from "frappe-react-sdk"
 import { useForm, Controller } from "react-hook-form"
 import { mutate } from 'swr'
@@ -24,6 +24,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { FileAttachments } from "@/components/FileAttachments"
 import type { Project } from '@/types/Projects/Project'
 import type { ProjectUser } from '@/types/Projects/ProjectUser'
 import { formatCurrency } from '@/utils/formatCurrency'
@@ -69,10 +70,10 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   // Edit and Delete project states
   const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
   const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
-  const [isCalculatingProgress, setIsCalculatingProgress] = useState(false);
+  // const [isCalculatingProgress, setIsCalculatingProgress] = useState(false);
 
   // Hook for project progress calculation
-  const { updateProjectProgress } = useProjectProgressUpdate();
+  // const { updateProjectProgress } = useProjectProgressUpdate();
 
   // Fetch complete project data with users field
   const { data: fullProjectData, isLoading: loadingProject, mutate: refreshProject } = useFrappeGetDoc(
@@ -82,20 +83,20 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   );
 
   // Fetch phases for progress calculation
-  const { data: projectPhases } = useFrappeGetDocList('project_phase', {
-    fields: ['name', 'progress'],
-    filters: [['project', '=', project?.name || '']],
-    orderBy: { field: 'creation', order: 'asc' },
-    limit: 0 // Get all phases
-  });
+  // const { data: projectPhases } = useFrappeGetDocList('project_phase', {
+  //   fields: ['name', 'progress'],
+  //   filters: [['project', '=', project?.name || '']],
+  //   orderBy: { field: 'creation', order: 'asc' },
+  //   limit: 0 // Get all phases
+  // });
 
-  // Fetch tasks for progress calculation (fallback when no phases)
-  const { data: projectTasks } = useFrappeGetDocList('Task', {
-    fields: ['name', 'progress'],
-    filters: [['project', '=', project?.name || '']],
-    orderBy: { field: 'creation', order: 'asc' },
-    limit: 0 // Get all tasks
-  });
+  // // Fetch tasks for progress calculation (fallback when no phases)
+  // const { data: projectTasks } = useFrappeGetDocList('Task', {
+  //   fields: ['name', 'progress'],
+  //   filters: [['project', '=', project?.name || '']],
+  //   orderBy: { field: 'creation', order: 'asc' },
+  //   limit: 0 // Get all tasks
+  // });
 
   const { call: insertCall } = useFrappePostCall('frappe.client.insert');
   const { call: saveCall } = useFrappePostCall('frappe.client.save');
@@ -170,20 +171,20 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   }, [fullProjectData?.percent_complete, project?.percent_complete]);
 
   // Function to manually recalculate progress
-  const handleRecalculateProgress = async () => {
-    if (!project?.name) return;
+  // const handleRecalculateProgress = async () => {
+  //   if (!project?.name) return;
     
-    setIsCalculatingProgress(true);
-    try {
-      await updateProjectProgress(project.name);
-      // Refresh project data
-      await refreshProject();
-    } catch (error) {
-      console.error('Error recalculating project progress:', error);
-    } finally {
-      setIsCalculatingProgress(false);
-    }
-  };
+  //   setIsCalculatingProgress(true);
+  //   try {
+  //     await updateProjectProgress(project.name);
+  //     // Refresh project data
+  //     await refreshProject();
+  //   } catch (error) {
+  //     console.error('Error recalculating project progress:', error);
+  //   } finally {
+  //     setIsCalculatingProgress(false);
+  //   }
+  // };
 
   // Function to refresh subtask data after update
   const handleRefreshSubTask = async () => {
@@ -702,7 +703,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-medium text-gray-700">Project Progress</span>
+                        <span className="text-lg font-medium text-gray-700">Overall Progress</span>
                         <span className="text-xs text-gray-500">
                           {/* (from project.percent_complete) */}
                         </span>
@@ -835,6 +836,16 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     </div>
                   </div>
                 </div>
+
+                {/* Project Files Section */}
+                <FileAttachments
+                  doctype="Project"
+                  docname={project.name}
+                  title="Project Files"
+                  allowUpload={true}
+                  allowDelete={true}
+                  className="mt-8"
+                />
               </>
             )}
 
