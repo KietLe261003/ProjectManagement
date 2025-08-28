@@ -130,35 +130,44 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   const projectUsers = fullProjectData?.users || project?.users || [];
   const loadingUsers = loadingProject;
 
-  // Calculate project progress based on phases or tasks
+  // Calculate project progress based on phases or tasks (COMMENTED OUT - OLD APPROACH)
+  // const calculatedProgress = useMemo(() => {
+  //   if (projectPhases && projectPhases.length > 0) {
+  //     // Calculate from phases
+  //     const totalProgress = projectPhases.reduce((sum: number, phase: any) => {
+  //       return sum + (phase.progress || 0);
+  //     }, 0);
+  //     return {
+  //       progress: Math.round(totalProgress / projectPhases.length),
+  //       source: 'phases',
+  //       count: projectPhases.length
+  //     };
+  //   } else if (projectTasks && projectTasks.length > 0) {
+  //     // Calculate from tasks
+  //     const totalProgress = projectTasks.reduce((sum: number, task: any) => {
+  //       return sum + (task.progress || 0);
+  //     }, 0);
+  //     return {
+  //       progress: Math.round(totalProgress / projectTasks.length),
+  //       source: 'tasks',
+  //       count: projectTasks.length
+  //     };
+  //   }
+  //   return {
+  //     progress: fullProjectData?.percent_complete || project?.percent_complete || 0,
+  //     source: 'manual',
+  //     count: 0
+  //   };
+  // }, [projectPhases, projectTasks, fullProjectData?.percent_complete, project?.percent_complete]);
+
+  // NEW APPROACH: Display project progress directly from project.percent_complete
   const calculatedProgress = useMemo(() => {
-    if (projectPhases && projectPhases.length > 0) {
-      // Calculate from phases
-      const totalProgress = projectPhases.reduce((sum: number, phase: any) => {
-        return sum + (phase.progress || 0);
-      }, 0);
-      return {
-        progress: Math.round(totalProgress / projectPhases.length),
-        source: 'phases',
-        count: projectPhases.length
-      };
-    } else if (projectTasks && projectTasks.length > 0) {
-      // Calculate from tasks
-      const totalProgress = projectTasks.reduce((sum: number, task: any) => {
-        return sum + (task.progress || 0);
-      }, 0);
-      return {
-        progress: Math.round(totalProgress / projectTasks.length),
-        source: 'tasks',
-        count: projectTasks.length
-      };
-    }
     return {
       progress: fullProjectData?.percent_complete || project?.percent_complete || 0,
-      source: 'manual',
-      count: 0
+      source: 'project',
+      count: 1
     };
-  }, [projectPhases, projectTasks, fullProjectData?.percent_complete, project?.percent_complete]);
+  }, [fullProjectData?.percent_complete, project?.percent_complete]);
 
   // Function to manually recalculate progress
   const handleRecalculateProgress = async () => {
@@ -219,16 +228,17 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     }
   }, [taskData, selectedTask?.name]);
 
+  // COMMENTED OUT - OLD AUTO-UPDATE PROGRESS LOGIC
   // Auto-update project progress when phases or tasks change
-  useEffect(() => {
-    if (calculatedProgress.source !== 'manual' && project?.name) {
-      const currentDbProgress = fullProjectData?.percent_complete || project?.percent_complete || 0;
-      if (Math.abs(calculatedProgress.progress - currentDbProgress) > 1) {
-        // Only update if there's a significant difference (more than 1%)
-        handleRecalculateProgress();
-      }
-    }
-  }, [calculatedProgress.progress, projectPhases, projectTasks]);
+  // useEffect(() => {
+  //   if (calculatedProgress.source !== 'manual' && project?.name) {
+  //     const currentDbProgress = fullProjectData?.percent_complete || project?.percent_complete || 0;
+  //     if (Math.abs(calculatedProgress.progress - currentDbProgress) > 1) {
+  //       // Only update if there's a significant difference (more than 1%)
+  //       handleRecalculateProgress();
+  //     }
+  //   }
+  // }, [calculatedProgress.progress, projectPhases, projectTasks]);
 
   // Form hooks for member management
   const addMemberForm = useForm<MemberFormData>();
@@ -692,16 +702,15 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-medium text-gray-700">Overall Progress</span>
-                        {calculatedProgress.source !== 'manual' && (
-                          <span className="text-xs text-gray-500">
-                            (from {calculatedProgress.count} {calculatedProgress.source})
-                          </span>
-                        )}
+                        <span className="text-lg font-medium text-gray-700">Project Progress</span>
+                        <span className="text-xs text-gray-500">
+                          {/* (from project.percent_complete) */}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-2xl font-bold text-blue-600">{calculatedProgress.progress}%</span>
-                        <Button
+                        {/* COMMENTED OUT - OLD RECALCULATE BUTTON */}
+                        {/* <Button
                           variant="ghost"
                           size="sm"
                           onClick={handleRecalculateProgress}
@@ -710,7 +719,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                           title="Recalculate progress"
                         >
                           <RefreshCw className={`h-4 w-4 ${isCalculatingProgress ? 'animate-spin' : ''}`} />
-                        </Button>
+                        </Button> */}
                       </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-4">
@@ -719,7 +728,8 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                         style={{ width: `${calculatedProgress.progress}%` }}
                       ></div>
                     </div>
-                    {calculatedProgress.source === 'phases' && projectPhases && (
+                    {/* COMMENTED OUT - OLD PHASE/TASK BREAKDOWN DISPLAY */}
+                    {/* {calculatedProgress.source === 'phases' && projectPhases && (
                       <div className="mt-3 text-xs text-gray-500">
                         <div className="font-medium mb-1">Phase progress breakdown:</div>
                         <div className="grid grid-cols-2 gap-1">
@@ -736,7 +746,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                       <div className="mt-3 text-xs text-gray-500">
                         Progress calculated from {calculatedProgress.count} direct tasks (no phases)
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
 
@@ -1059,28 +1069,31 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   onPhaseUpdated={async () => {
                     // Refresh project data when phase is updated
                     refreshProject();
+                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
                     // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 500);
+                    // setTimeout(async () => {
+                    //   await handleRecalculateProgress();
+                    // }, 500);
                   }}
                   onPhaseDeleted={async () => {
                     // Refresh project data and go back to tasks when phase is deleted
                     refreshProject();
                     setActiveTab('tasks');
                     setSelectedPhase(null);
+                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
                     // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 500);
+                    // setTimeout(async () => {
+                    //   await handleRecalculateProgress();
+                    // }, 500);
                   }}
                   onTaskCreated={async () => {
                     // Refresh project data when task is created
                     refreshProject();
+                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
                     // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 500);
+                    // setTimeout(async () => {
+                    //   await handleRecalculateProgress();
+                    // }, 500);
                   }}
                 />
               </div>
@@ -1101,20 +1114,22 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     refreshProject();
                     // Refresh task data to show updated information
                     await handleRefreshTask();
+                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
                     // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 500);
+                    // setTimeout(async () => {
+                    //   await handleRecalculateProgress();
+                    // }, 500);
                   }}
                   onTaskDeleted={async () => {
                     // Refresh project data and go back to tasks when task is deleted
                     refreshProject();
                     setActiveTab('tasks');
                     setSelectedTask(null);
+                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
                     // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 500);
+                    // setTimeout(async () => {
+                    //   await handleRecalculateProgress();
+                    // }, 500);
                   }}
                 />
               </div>
@@ -1135,20 +1150,22 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     if (selectedSubTask?.task) {
                       await handleRefreshTaskByName(selectedSubTask.task);
                     }
+                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
                     // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 500);
+                    // setTimeout(async () => {
+                    //   await handleRecalculateProgress();
+                    // }, 500);
                   }}
                   onSubTaskDeleted={async () => {
                     // Refresh project data and go back to tasks when subtask is deleted
                     refreshProject();
                     setActiveTab('tasks');
                     setSelectedSubTask(null);
+                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
                     // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 500);
+                    // setTimeout(async () => {
+                    //   await handleRecalculateProgress();
+                    // }, 500);
                   }}
                 />
               </div>

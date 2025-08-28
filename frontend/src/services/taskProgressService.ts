@@ -59,6 +59,15 @@ export class TaskProgressService {
         await updateDoc('Task', taskName, {
           progress: averageProgress
         });
+        
+        // Signal that task progress has been updated (for realtime phase progress update)
+        console.log(`Task ${taskName} progress updated to ${averageProgress}%, signaling phase progress update...`);
+        localStorage.setItem('task_progress_updated', taskName);
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'task_progress_updated',
+          newValue: taskName
+        }));
+        
         console.log(`Task ${taskName} progress updated to ${averageProgress}%`);
         return averageProgress;
       } catch (error) {
@@ -96,6 +105,14 @@ export class TaskProgressService {
           progress: newProgress
         });
 
+        // Signal that task progress has been updated (for realtime phase progress update)
+        console.log(`Task ${taskName} status/progress updated, signaling phase progress update...`);
+        localStorage.setItem('task_progress_updated', taskName);
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'task_progress_updated',
+          newValue: taskName
+        }));
+
         return newProgress;
       } catch (error) {
         console.error('Error updating task progress by status:', error);
@@ -131,6 +148,14 @@ export class TaskProgressService {
           progress: progress,
           status: autoStatus
         });
+
+        // Signal that task progress has been updated (for realtime phase progress update)
+        console.log(`Task ${taskName} manual progress updated to ${progress}%, signaling phase progress update...`);
+        localStorage.setItem('task_progress_updated', taskName);
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'task_progress_updated',
+          newValue: taskName
+        }));
 
         return { progress, status: autoStatus };
       } catch (error) {
