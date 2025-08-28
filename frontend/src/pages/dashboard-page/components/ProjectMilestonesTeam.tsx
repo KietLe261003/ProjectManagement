@@ -56,7 +56,7 @@ export const ProjectMilestonesTeam: React.FC<ProjectMilestonesTeamProps> = ({ pr
         const endDate = new Date(milestone.endDate);
         endDate.setHours(0, 0, 0, 0);
         const daysDiff = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return milestone.status !== 'completed' && daysDiff >= 0 && daysDiff <= 60; // Chỉ từ hôm nay đến 60 ngày tới
+        return milestone.status !== 'completed' && daysDiff >= 0 && daysDiff <= 15; // Chỉ từ hôm nay đến 15 ngày tới
       });
 
     // Sắp xếp theo độ gần với ngày hiện tại (ngày đến hạn gần nhất lên đầu)
@@ -136,44 +136,6 @@ export const ProjectMilestonesTeam: React.FC<ProjectMilestonesTeamProps> = ({ pr
         return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
       });
   }, [tasks, isProjectSpecific]);
-
-  // Dữ liệu team members (tạm thời comment - sẽ được sử dụng sau)
-  /*
-  const teamMembers: TeamMember[] = [
-    {
-      id: '1',
-      name: 'Sarah Chen',
-      initials: 'SC',
-      role: 'Frontend Dev',
-      workload: 85,
-      taskCount: 8
-    },
-    {
-      id: '2',
-      name: 'Mike Johnson',
-      initials: 'MJ',
-      role: 'Backend Dev',
-      workload: 70,
-      taskCount: 6
-    },
-    {
-      id: '3',
-      name: 'Emma Davis',
-      initials: 'ED',
-      role: 'Designer',
-      workload: 60,
-      taskCount: 4
-    },
-    {
-      id: '4',
-      name: 'Alex Kim',
-      initials: 'AK',
-      role: 'QA Engineer',
-      workload: 45,
-      taskCount: 3
-    }
-  ];
-  */
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -263,7 +225,7 @@ export const ProjectMilestonesTeam: React.FC<ProjectMilestonesTeamProps> = ({ pr
         ) : (
           <>
             <span className="font-bold bg-yellow-200 px-1 rounded">Dự án</span>{" "}
-            sắp <span className="text-red-600 font-semibold">đến hạn</span> (&lt;30 ngày)
+            sắp <span className="text-red-600 font-semibold">đến hạn</span> (&lt;15 ngày)
           </>
         )}>
         <div className={`space-y-6 ${

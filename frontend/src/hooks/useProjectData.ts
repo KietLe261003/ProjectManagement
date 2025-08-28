@@ -4,7 +4,6 @@ import type { FilteredData, Project, Task, Timesheet } from '../types';
 
 export const useProjectData = () => {
   const [selectedProject, setSelectedProject] = useState<string>('all');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   
   // State cho phases với tasks
@@ -204,11 +203,6 @@ export const useProjectData = () => {
   const filteredData: FilteredData = useMemo(() => {
     let projects = allProjects;
     
-    // Filter theo department
-    if (selectedDepartment !== 'all' && selectedDepartment !== '') {
-      projects = projects.filter(p => p.department === selectedDepartment);
-    }
-    
     // Filter theo team
     if (selectedTeam !== 'all' && selectedTeam !== '') {
       projects = projects.filter(p => p.team === selectedTeam);
@@ -239,17 +233,15 @@ export const useProjectData = () => {
         return ts.project ? projectNames.includes(ts.project) : true;
       }),
     };
-  }, [allProjects, allPhases, allTasks, allTimesheets, selectedProject, selectedDepartment, selectedTeam]);
+  }, [allProjects, allPhases, allTasks, allTimesheets, selectedProject, selectedTeam]);
   
   return {
     allProjects,
     allPhases,
     filteredData,
     selectedProject,
-    selectedDepartment,
     selectedTeam,
     setSelectedProject,
-    setSelectedDepartment,
     setSelectedTeam,
     isLoading,
   };

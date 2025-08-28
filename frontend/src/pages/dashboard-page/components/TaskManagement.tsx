@@ -68,15 +68,15 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
     return acc;
   }, {} as Record<string, number>);
 
-  // Chuẩn hóa màu sắc theo ProjectOverview
+  // Chuẩn hóa màu sắc theo ProjectOverview với màu đậm hơn
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Open': return '#3b82f6'; // Blue
-      case 'Working': return '#f59e0b'; // Orange/Yellow
-      case 'Completed': return '#22c55e'; // Green
-      case 'Overdue': return '#ef4444'; // Red
-      case 'Cancelled': return '#6b7280'; // Gray
-      default: return '#3b82f6'; // Default blue
+      case 'Open': return '#1e40af'; // Darker Blue
+      case 'Working': return '#d97706'; // Darker Orange
+      case 'Completed': return '#16a34a'; // Darker Green
+      case 'Overdue': return '#dc2626'; // Darker Red
+      case 'Cancelled': return '#4b5563'; // Darker Gray
+      default: return '#1e40af'; // Default darker blue
     }
   };
 
@@ -96,30 +96,30 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
     return acc;
   }, {} as Record<string, number>);
 
-  // Chuẩn hóa màu sắc priority theo ProjectOverview
+  // Chuẩn hóa màu sắc priority theo ProjectOverview với màu đậm hơn
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'Urgent': return '#dc2626'; // Red
-      case 'High': return '#f97316'; // Orange
-      case 'Medium': return '#eab308'; // Yellow - using orange for consistency
-      case 'Low': return '#16a34a'; // Green
-      default: return '#6b7280'; // Gray
+      case 'Urgent': return '#b91c1c'; // Darker Red
+      case 'High': return '#ea580c'; // Darker Orange
+      case 'Medium': return '#ca8a04'; // Darker Yellow
+      case 'Low': return '#15803d'; // Darker Green
+      default: return '#4b5563'; // Darker Gray
     }
   };
 
-  // Lấy màu sắc cho status dự án theo ProjectOverview
+  // Lấy màu sắc cho status dự án theo ProjectOverview với màu đậm hơn
   const getProjectStatusColor = (status: string) => {
     switch (status) {
       case 'Completed':
       case 'Hoàn thành':
-        return '#22c55e'; // Green
+        return '#16a34a'; // Darker Green
       case 'Cancelled':
       case 'Canceled':
       case 'Hủy':
       case 'Đã hủy':
-        return '#ef4444'; // Red
+        return '#dc2626'; // Darker Red
       default:
-        return '#3b82f6'; // Blue (Open/Đang mở)
+        return '#1e40af'; // Darker Blue (Open/Đang mở)
     }
   };
 
@@ -180,24 +180,47 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
     return phases.filter(phase => phase.project === projectName);
   };
 
+  // Helper function to get standalone tasks for a project (tasks not belonging to any phase)
+  const getStandaloneTasks = (projectName: string): Task[] => {
+    const projectPhases = getPhasesForProject(projectName);
+    const allPhaseTaskNames = new Set<string>();
+    
+    // Collect all task names that belong to phases
+    projectPhases.forEach(phase => {
+      if (phase.tasks) {
+        phase.tasks.forEach(phaseTask => {
+          if (phaseTask.task) {
+            allPhaseTaskNames.add(phaseTask.task);
+          }
+        });
+      }
+    });
+
+    // Return tasks that belong to the project but not to any phase
+    return tasks.filter(task => 
+      task.project === projectName && 
+      !allPhaseTaskNames.has(task.name)
+    );
+  };
+
   // Render task item within a phase
   const renderTaskInPhase = (task: Task, level: number = 1): React.ReactNode => {
     const indentClass = level > 0 ? `pl-${level * 6}` : '';
     
     return (
-      <div key={task.name} className={`flex items-center py-2 ${indentClass} border-b border-gray-100 last:border-b-0`}>
+      <div key={task.name} className={`flex items-center py-3 ${indentClass} border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors`}>
         <div className="flex-grow flex items-center">
-          <span className="mr-2 text-blue-600">●</span>
+          <span className="mr-3 text-blue-600 text-lg">●</span>
           <span className="font-medium text-gray-800">{task.subject}</span>
         </div>
-        <div className="w-32 text-sm text-gray-600">{task.assigned_to || 'Chưa giao'}</div>
+        <div className="w-36 text-sm text-gray-600 font-medium">{task.assigned_to || 'Chưa giao'}</div>
         <div className="w-32 text-center">
           <StatusBadge status={task.status} type="status" />
         </div>
-        <div className="w-24 text-center">
+        <div className="w-28 text-center">
           <StatusBadge status={task.priority} type="priority" />
         </div>
-        <div className="w-20 text-right text-sm text-gray-600">{task.progress}%</div>
+        <div className="w-20 text-right text-sm font-semibold text-gray-700">{task.progress}%</div>
       </div>
     );
   };
@@ -209,25 +232,56 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
     const phaseTasks = getTasksForPhase(phase.name);
     
     return (
-      <div key={phase.name} className="ml-4">
+      <div key={phase.name} className="mb-4">
         <div 
-          className="bg-green-500 text-white p-2 rounded-t-lg font-medium text-md cursor-pointer hover:bg-green-600 flex items-center justify-between"
+          className="bg-emerald-600 text-white p-3 rounded-lg font-semibold text-md cursor-pointer hover:bg-emerald-700 flex items-center justify-between transition-colors shadow-sm"
           onClick={() => togglePhase(phaseKey)}
         >
-          <span>Giai đoạn: {phase.phase_name} ({phase.status})</span>
+          <span>📋 Giai đoạn: {phase.phase_name} ({phase.status})</span>
           <span className="text-lg">
-            {isPhaseExpanded ? '▼' : '▶️'}
+            {isPhaseExpanded ? '▼' : '▶'}
           </span>
         </div>
         {isPhaseExpanded && (
-          <div className="bg-white border-l-2 border-r-2 border-b-2 border-gray-200 p-3">
+          <div className="bg-white border border-gray-200 rounded-b-lg mt-1 p-4 shadow-sm">
             {phaseTasks.length > 0 ? (
               phaseTasks.map(task => renderTaskInPhase(task))
             ) : (
-              <div className="text-gray-500 text-center py-2 text-sm">
+              <div className="text-gray-500 text-center py-4 text-sm">
                 Chưa có nhiệm vụ nào cho giai đoạn này.
               </div>
             )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render standalone tasks section
+  const renderStandaloneTasks = (projectName: string): React.ReactNode => {
+    const standaloneTasks = getStandaloneTasks(projectName);
+    
+    if (standaloneTasks.length === 0) {
+      return null;
+    }
+
+    const standaloneKey = `${projectName}-standalone`;
+    const isStandaloneExpanded = expandedPhases.has(standaloneKey);
+    
+    return (
+      <div className="mb-4">
+        <div 
+          className="bg-indigo-600 text-white p-3 rounded-lg font-semibold text-md cursor-pointer hover:bg-indigo-700 flex items-center justify-between transition-colors shadow-sm"
+          onClick={() => togglePhase(standaloneKey)}
+        >
+          <span>⚡ Nhiệm vụ độc lập ({standaloneTasks.length} task)</span>
+          <span className="text-lg">
+            {isStandaloneExpanded ? '▼' : '▶'}
+          </span>
+        </div>
+        {isStandaloneExpanded && (
+          <div className="bg-white border border-gray-200 rounded-b-lg mt-1 p-4 shadow-sm">
+            {standaloneTasks.map(task => renderTaskInPhase(task))}
           </div>
         )}
       </div>
@@ -261,54 +315,54 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
         </div>
       </div>
 
-      <h3 className="text-xl font-semibold mt-8 mb-4 text-gray-700">Danh sách nhiệm vụ</h3>
-      <div className="space-y-4">
+      <h3 className="text-xl font-semibold mt-8 mb-6 text-gray-800">Danh sách nhiệm vụ</h3>
+      <div className="space-y-6">
         {projects.map(project => {
           const projectPhases = getPhasesForProject(project.name);
           const isProjectExpanded = expandedProjects.has(project.name);
           
           return (
-            <div key={project.name}>
+            <div key={project.name} className="border border-gray-200 rounded-lg shadow-sm">
               <div 
-                className="text-white p-3 rounded-t-lg font-semibold text-lg cursor-pointer hover:opacity-90 flex items-center justify-between transition-opacity"
+                className="text-white p-4 rounded-t-lg font-semibold text-lg cursor-pointer hover:opacity-90 flex items-center justify-between transition-opacity"
                 style={{ backgroundColor: getProjectStatusColor(project.status) }}
                 onClick={() => toggleProject(project.name)}
               >
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold">Dự án: {project.project_name} ({project.status})</span>
+                    <span className="text-lg font-semibold">🏗️ Dự án: {project.project_name} ({project.status})</span>
                     <span className="text-xl">
-                      {isProjectExpanded ? '▼' : '▶️'}
+                      {isProjectExpanded ? '▼' : '▶'}
                     </span>
                   </div>
-                  <div className="flex items-center mt-2 text-sm text-white space-x-6">
+                  <div className="flex items-center mt-3 text-sm text-white space-x-6">
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Priority:</span>
-                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                      <span className="bg-white bg-opacity-20 text-white px-2 py-1 rounded text-xs font-medium backdrop-blur-sm">
                         {project.priority}
                       </span>
                     </div>
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Progress:</span>
-                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                      <span className="bg-white bg-opacity-20 text-white px-2 py-1 rounded text-xs font-medium backdrop-blur-sm">
                         {project.percent_complete}%
                       </span>
                     </div>
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Expected End:</span>
-                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                      <span className="bg-white bg-opacity-20 text-white px-2 py-1 rounded text-xs font-medium backdrop-blur-sm">
                         {project.expected_end_date ? new Date(project.expected_end_date).toLocaleDateString('vi-VN') : 'Chưa xác định'}
                       </span>
                     </div>
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Department:</span>
-                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                      <span className="bg-white bg-opacity-20 text-white px-2 py-1 rounded text-xs font-medium backdrop-blur-sm">
                         {project.department}
                       </span>
                     </div>
                     <div className="flex items-center">
                       <span className="font-medium mr-2">Team:</span>
-                      <span className="bg-white text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                      <span className="bg-white bg-opacity-20 text-white px-2 py-1 rounded text-xs font-medium backdrop-blur-sm">
                         {project.team}
                       </span>
                     </div>
@@ -316,12 +370,18 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({ projects, phases
                 </div>
               </div>
               {isProjectExpanded && (
-                <div className="bg-white rounded-b-lg border border-gray-200 p-4">
-                  {projectPhases.length > 0 ? (
-                    projectPhases.map(phase => renderPhase(phase, project.name))
-                  ) : (
-                    <div className="text-gray-500 text-center py-4">
-                      Chưa có giai đoạn nào cho dự án này.
+                <div className="bg-gray-50 rounded-b-lg p-6">
+                  {/* Render Phases */}
+                  {projectPhases.map(phase => renderPhase(phase, project.name))}
+                  
+                  {/* Render Standalone Tasks */}
+                  {renderStandaloneTasks(project.name)}
+                  
+                  {projectPhases.length === 0 && getStandaloneTasks(project.name).length === 0 && (
+                    <div className="text-gray-500 text-center py-8 bg-white rounded-lg border border-gray-200">
+                      <div className="text-4xl mb-2">📋</div>
+                      <p className="text-lg font-medium mb-1">Chưa có nhiệm vụ nào</p>
+                      <p className="text-sm">Dự án này chưa có giai đoạn hoặc nhiệm vụ nào được tạo.</p>
                     </div>
                   )}
                 </div>
