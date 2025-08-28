@@ -417,7 +417,7 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
           }
         });
       } catch (saveError) {
-        console.log('Save method failed:', saveError);
+        // console.log('Save method failed:', saveError);
         // Method 2: Try using set_value (this might work in some ERPNext versions)
         try {
           await setValueCall({
@@ -427,7 +427,7 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
             value: data.owner
           });
         } catch (setValueError) {
-          console.log('Set value failed, falling back to Project Manager approach:', setValueError);
+          // console.log('Set value failed, falling back to Project Manager approach:', setValueError);
 
           // Fallback: Add user as Project Manager since owner field cannot be changed
           const currentUsers = projectUsers || [];

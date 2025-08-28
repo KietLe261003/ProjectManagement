@@ -320,14 +320,7 @@ export function FileAttachments({
   };
 
   // Check if attachment is a link
-  const isLinkAttachment = (file: FileAttachment) => {
-    // Debug: log file data to understand the structure
-    console.log('Checking file:', {
-      file_name: file.file_name,
-      file_url: file.file_url,
-      file_size: file.file_size
-    });
-    
+  const isLinkAttachment = (file: FileAttachment) => {  
     // Check if file_url is an external URL and one of these conditions:
     // 1. file_size is 0 (typical for link attachments)
     // 2. file_name is also a URL
@@ -337,14 +330,7 @@ export function FileAttachments({
     const fileNameIsUrl = file.file_name.startsWith('http://') || file.file_name.startsWith('https://');
     const hasNoExtension = !file.file_name.includes('.') || file.file_name.split('.').length < 2;
     
-    const result = isExternalUrl && (hasNoSize || fileNameIsUrl || hasNoExtension);
-    console.log('isLinkAttachment result:', result, {
-      isExternalUrl,
-      hasNoSize,
-      fileNameIsUrl,
-      hasNoExtension
-    });
-    
+    const result = isExternalUrl && (hasNoSize || fileNameIsUrl || hasNoExtension);  
     return result;
   };
 

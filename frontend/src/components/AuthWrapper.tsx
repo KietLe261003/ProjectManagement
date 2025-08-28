@@ -35,14 +35,14 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
   });
 
   useEffect(() => {
-    if (!isLoginPage()) {
-      console.log('Auth watcher initialized:', {
-        isWatching,
-        currentUser: !!currentUser,
-        isLoading,
-        checkInterval
-      });
-    }
+    // if (!isLoginPage()) {
+    //   // console.log('Auth watcher initialized:', {
+    //   //   isWatching,
+    //   //   currentUser: !!currentUser,
+    //   //   isLoading,
+    //   //   checkInterval
+    //   // });
+    // }
   }, [isWatching, currentUser, isLoading, checkInterval]);
 
   // If we're on a login page, just render children
