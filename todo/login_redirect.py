@@ -25,6 +25,6 @@ def redirect_after_login():
     if user == "Guest":
         return {"redirect": "/login"}
     elif user == "Administrator":
-        return {"redirect": "/app"}
+        return {"redirect": "/app/home"}
     else:
         return {"redirect": "/todo"}
