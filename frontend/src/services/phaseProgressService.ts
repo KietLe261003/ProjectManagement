@@ -7,6 +7,7 @@ export class PhaseProgressService {
 
     const calculateAndUpdatePhaseProgress = async (phaseName: string) => {
       try {
+           
         // First, get the phase to get task list
         const phaseResponse = await fetch('/api/method/frappe.client.get', {
           method: 'POST',
@@ -40,6 +41,7 @@ export class PhaseProgressService {
 
         // Get progress of all tasks in this phase
         const taskNames = phase.tasks.map((task: any) => task.task);
+        console.log(`Phase ${phaseName} has ${taskNames.length} tasks:`, taskNames);
         
         // Get task progress for all tasks
         const tasksResponse = await fetch('/api/method/frappe.client.get_list', {
@@ -76,10 +78,13 @@ export class PhaseProgressService {
         // Calculate average progress of all tasks
         let totalProgress = 0;
         tasks.forEach((task: any) => {
-          totalProgress += (task.progress || 0);
+          const taskProgress = task.progress || 0;
+          console.log(`Task ${task.name}: ${taskProgress}%`);
+          totalProgress += taskProgress;
         });
 
         const averageProgress = Math.round(totalProgress / tasks.length);
+        console.log(`Calculated phase progress: ${averageProgress}% (from ${tasks.length} tasks)`);
 
         // Update phase progress
         await updateDoc('project_phase', phaseName, {

@@ -107,9 +107,35 @@ export class TodoService {
       currentUser
     };
   }
+
+  // Get all todos for all users (for team management)
+  static useAllTodos() {
+    const { data: todos, isLoading, error } = useFrappeGetDocList<ToDo>('ToDo', {
+      fields: [
+        'name',
+        'status',
+        'priority',
+        'date',
+        'allocated_to',
+        'description',
+        'reference_type',
+        'reference_name',
+        'assigned_by'
+      ],
+      filters: [['reference_type', 'in', ['Task', 'SubTask']]],
+      limit: 0
+    });
+
+    return {
+      todos: todos || [],
+      isLoading,
+      error
+    };
+  }
 }
 
 // Export hooks for easier usage
 export const useUserTodos = TodoService.useUserTodos;
 export const useUserTodosEnriched = TodoService.useUserTodosEnriched;
 export const useUserTodosWithTaskData = TodoService.useUserTodosWithTaskData;
+export const useAllTodos = TodoService.useAllTodos;
