@@ -151,9 +151,7 @@ export const EditSubTask: React.FC<EditSubTaskProps> = ({ subtask, projectName, 
             >
               <option value="Open">Open</option>
               <option value="Working">Working</option>
-              <option value="Pending Review">Pending Review</option>
               <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
 

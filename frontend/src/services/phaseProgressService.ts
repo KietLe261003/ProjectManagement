@@ -180,3 +180,9 @@ export const {
   usePhaseStatusProgressUpdate, 
   useManualPhaseProgressUpdate
 } = PhaseProgressService;
+
+// Export a standalone function for external use
+export const calculateAndUpdatePhaseProgress = async (phaseName: string) => {
+  const { calculateAndUpdatePhaseProgress: hookFunction } = PhaseProgressService.usePhaseProgressCalculation();
+  return await hookFunction(phaseName);
+};

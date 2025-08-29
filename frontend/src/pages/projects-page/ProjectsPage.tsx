@@ -1,22 +1,35 @@
 import React from 'react';
-import { Search, Filter, Grid, List } from 'lucide-react';
 import ProjectListViewGrid from './components/project/ProjectListViewGrid';
 import ProjectListViewCard from './components/project/ProjectListViewCard';
+import ProjectFilter from './components/ProjectFilter';
 import { useUserProjects } from '@/services';
 import CreateProject from './components/project/CreateProject';
+import type { Project } from '@/types/Projects/Project';
 
 export const ProjectsPage: React.FC = () => {
-  const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('list');
+  const [filteredProjects, setFilteredProjects] = React.useState<Project[]>([]);
   
   // Use centralized project service
   const { data: projects = [], isLoading, error, mutate } = useUserProjects();
 
-  const handleProjectsChange = () => {
+  // Update filtered projects when projects change
+  React.useEffect(() => {
+    setFilteredProjects(projects);
+  }, [projects]);
+
+  const handleProjectsChange = async () => {
     // Refresh projects list when a project is updated or deleted
+    // console.log('handleProjectsChange called, mutate function exists:', !!mutate);
     if (mutate) {
-      mutate();
+      // console.log('Calling mutate to refresh projects data...');
+      await mutate();
     }
   };
+
+  const handleFilteredProjectsChange = React.useCallback((filtered: Project[]) => {
+    setFilteredProjects(filtered);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -27,7 +40,7 @@ export const ProjectsPage: React.FC = () => {
             Projects
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Showing projects you have access to ({projects.length} projects)
+            Showing {filteredProjects.length} of {projects.length} projects
           </p>
         </div>
         <div className="mt-4 flex md:mt-0 md:ml-4">
@@ -36,45 +49,14 @@ export const ProjectsPage: React.FC = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          <div className="flex items-center space-x-4">
-            {/* Search */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                className="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                placeholder="Search projects..."
-              />
-            </div>
-
-            {/* Filter */}
-            <button className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </button>
-          </div>
-
-          {/* View Toggle */}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <Grid className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+      {!isLoading && !error && projects.length > 0 && (
+        <ProjectFilter 
+          projects={projects}
+          onFilteredProjectsChange={handleFilteredProjectsChange}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
+      )}
 
       {/* Projects Grid/List */}
       {isLoading ? (
@@ -107,12 +89,19 @@ export const ProjectsPage: React.FC = () => {
             <p className="text-sm">Create a new project or ask to be added to an existing one.</p>
           </div>
         </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="flex flex-col justify-center items-center p-8 bg-white rounded-lg border border-gray-200">
+          <div className="text-gray-500 text-center">
+            <p className="text-lg font-medium mb-2">No projects match your filters</p>
+            <p className="text-sm">Try adjusting your search criteria or clear the filters.</p>
+          </div>
+        </div>
       ) : (
         <>
           {viewMode === 'grid' ? (
-            <ProjectListViewGrid projects={projects} onProjectsChange={handleProjectsChange} />
+            <ProjectListViewGrid projects={filteredProjects} onProjectsChange={handleProjectsChange} />
           ) : (
-            <ProjectListViewCard projects={projects} onProjectsChange={handleProjectsChange} />
+            <ProjectListViewCard projects={filteredProjects} onProjectsChange={handleProjectsChange} />
           )}
         </>
       )}

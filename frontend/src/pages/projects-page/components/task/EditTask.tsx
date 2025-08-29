@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useFrappeGetDocList, useFrappeGetDoc } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappeGetDoc, useFrappeAuth } from 'frappe-react-sdk';
 import { useProjectUsers } from '@/services/projectUsersService';
 import { useUpdateTask, useTaskAssignment } from '@/services/taskService';
 import { useManualProgressUpdate, useTaskStatusProgressUpdate } from '@/services/taskProgressService';
@@ -22,12 +22,16 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
   const { assignTask, unassignTask } = useTaskAssignment();
   const { updateTaskProgress } = useManualProgressUpdate();
   const { updateTaskProgressByStatus } = useTaskStatusProgressUpdate();
+  const { currentUser } = useFrappeAuth();
   
   // Fetch project users for assignment dropdown
   const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
   
   // Fetch project data to validate dates
   const { data: projectData } = useFrappeGetDoc('Project', projectName);
+
+  // Get project users for permission checking
+  const projectUsersData = projectData?.users || [];
   
   // Fetch current ToDo assignments for this task
   const { data: existingToDos } = useFrappeGetDocList('ToDo', {
@@ -41,6 +45,27 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
     filters: [['task', '=', task?.name || '']],
     limit: 1
   });
+
+  // Check if current user can change task status to Completed
+  const canMarkAsCompleted = () => {
+    // Administrator can always mark as completed
+    if (currentUser === 'Administrator') {
+      return true;
+    }
+
+    // Project owner can mark as completed
+    if (projectData?.owner === currentUser) {
+      return true;
+    }
+
+    // Check if user is Project Manager (Owner Substitute)
+    const currentUserInProject = projectUsersData.find((user: any) => user.user === currentUser);
+    if (currentUserInProject?.project_status === 'Project Manager (Owner Substitute)') {
+      return true;
+    }
+
+    return false;
+  };
   
   const [formData, setFormData] = useState({
     subject: '',
@@ -91,6 +116,14 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
     e.preventDefault();
     
     if (!task) return;
+
+    // Check if user is trying to set status to Completed without permission
+    if (formData.status === 'Completed' && !canMarkAsCompleted()) {
+      toast.error("Permission denied", {
+        description: "You don't have permission to mark this task as Completed. Only Project Owner, Project Manager, or Administrator can do this.",
+      });
+      return;
+    }
 
     // Validate date fields
     if (formData.exp_start_date && formData.exp_end_date) {
@@ -243,9 +276,14 @@ const EditTask: React.FC<EditTaskProps> = ({ task, projectName, isOpen, onClose,
                 <option value="Pending Review">Pending Review</option>
                 <option value="Overdue">Overdue</option>
                 <option value="Template">Template</option>
-                <option value="Completed">Completed</option>
+                {canMarkAsCompleted() && <option value="Completed">Completed</option>}
                 <option value="Cancelled">Cancelled</option>
               </select>
+              {!canMarkAsCompleted() && (
+                <span className="text-xs text-amber-600">
+                  You don't have permission to mark Completed
+                </span>
+              )}
             </div>
 
             <div className="space-y-2">

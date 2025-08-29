@@ -26,7 +26,7 @@ app_license = "agpl-3.0"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/todo/css/todo.css"
-# app_include_js = "/assets/todo/js/login_redirect.js"
+app_include_js = "/assets/todo/js/login_redirect.js"
 
 # include js, css files in header of web template
 web_include_css = "/assets/todo/css/login.css"

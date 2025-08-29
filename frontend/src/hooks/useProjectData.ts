@@ -4,7 +4,6 @@ import type { FilteredData, Project, Task, Timesheet } from '../types';
 
 export const useProjectData = () => {
   const [selectedProject, setSelectedProject] = useState<string>('all');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   
   // State cho phases với tasks
@@ -46,7 +45,7 @@ export const useProjectData = () => {
       }
 
       setPhasesTasksLoading(true);
-      console.log('🔄 Fetching individual phase documents for tasks...');
+      // console.log('🔄 Fetching individual phase documents for tasks...');
 
       try {
         const phasesWithTasksPromises = phasesListData.map(async (phaseItem: any) => {
@@ -67,8 +66,8 @@ export const useProjectData = () => {
             const result = await response.json();
             const fullPhase = result.data || result;
             
-            console.log(`✅ Phase ${phaseItem.name} full data:`, fullPhase);
-            console.log(`📋 Phase ${phaseItem.name} tasks:`, fullPhase.tasks);
+            // console.log(`✅ Phase ${phaseItem.name} full data:`, fullPhase);
+            // console.log(`📋 Phase ${phaseItem.name} tasks:`, fullPhase.tasks);
             
             return fullPhase;
           } catch (error) {
@@ -80,7 +79,7 @@ export const useProjectData = () => {
         const results = await Promise.all(phasesWithTasksPromises);
         const validPhases = results.filter(phase => phase !== null);
         
-        console.log('🎉 All phases with tasks loaded:', validPhases);
+        // console.log('🎉 All phases with tasks loaded:', validPhases);
         setPhasesWithTasks(validPhases);
       } catch (error) {
         console.error('💥 Error in fetchPhasesWithTasks:', error);
@@ -150,7 +149,7 @@ export const useProjectData = () => {
       // Phase đã có full data bao gồm tasks
       const phaseTasks = phase.tasks || [];
       
-      console.log(`📊 Processing Phase ${phase.name} with ${phaseTasks.length} tasks:`, phaseTasks);
+      // console.log(`📊 Processing Phase ${phase.name} with ${phaseTasks.length} tasks:`, phaseTasks);
       
       return {
         ...phase,
@@ -204,11 +203,6 @@ export const useProjectData = () => {
   const filteredData: FilteredData = useMemo(() => {
     let projects = allProjects;
     
-    // Filter theo department
-    if (selectedDepartment !== 'all' && selectedDepartment !== '') {
-      projects = projects.filter(p => p.department === selectedDepartment);
-    }
-    
     // Filter theo team
     if (selectedTeam !== 'all' && selectedTeam !== '') {
       projects = projects.filter(p => p.team === selectedTeam);
@@ -239,17 +233,15 @@ export const useProjectData = () => {
         return ts.project ? projectNames.includes(ts.project) : true;
       }),
     };
-  }, [allProjects, allPhases, allTasks, allTimesheets, selectedProject, selectedDepartment, selectedTeam]);
+  }, [allProjects, allPhases, allTasks, allTimesheets, selectedProject, selectedTeam]);
   
   return {
     allProjects,
     allPhases,
     filteredData,
     selectedProject,
-    selectedDepartment,
     selectedTeam,
     setSelectedProject,
-    setSelectedDepartment,
     setSelectedTeam,
     isLoading,
   };

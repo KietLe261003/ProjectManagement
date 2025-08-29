@@ -27,11 +27,24 @@ export class TaskService {
       // Remove assign_to from task data as it's not a Task field
       const { assign_to, ...taskFields } = taskData;
       
-      return await updateDoc("Task", taskName, {
+      const result = await updateDoc("Task", taskName, {
         ...taskFields,
         exp_start_date: taskFields.exp_start_date || undefined,
         exp_end_date: taskFields.exp_end_date || undefined,
       });
+
+      // Signal that task progress has been updated (for realtime phase progress update)
+      if (taskFields.progress !== undefined) {
+        console.log(`Task ${taskName} progress updated, signaling phase progress update...`);
+        localStorage.setItem('task_progress_updated', taskName);
+        // Trigger storage event
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'task_progress_updated',
+          newValue: taskName
+        }));
+      }
+
+      return result;
     };
 
     return {

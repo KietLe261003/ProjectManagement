@@ -112,7 +112,7 @@ export const useAuthWatcher = (options: UseAuthWatcherOptions = {}) => {
     const intervalMs = checkIntervalMinutes * 60 * 1000;
     intervalRef.current = setInterval(checkAuth, intervalMs);
 
-    console.log(`Auth watcher started - checking every ${checkIntervalMinutes} minutes`);
+    // console.log(`Auth watcher started - checking every ${checkIntervalMinutes} minutes`);
   }, [enabled, isLoading, currentUser, checkIntervalMinutes, checkAuth, cleanup]);
 
   // Effect to start/stop watching based on auth state

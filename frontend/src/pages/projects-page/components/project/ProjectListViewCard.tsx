@@ -1,8 +1,9 @@
 import type { Project } from '@/types/Projects/Project';
 import { formatCurrency } from '@/utils/formatCurrency';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { DetailProject } from './DetailProject';
 import ProjectActions from './ProjectActions';
+import { mutate as globalMutate } from 'swr';
 
 interface ProjectListViewCardProps {
   projects: Project[];
@@ -12,6 +13,7 @@ interface ProjectListViewCardProps {
 const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onProjectsChange }) => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [lastUpdatedProject, setLastUpdatedProject] = useState<string | null>(null);
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project);
@@ -22,6 +24,66 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
     setIsDrawerOpen(false);
     setSelectedProject(null);
   };
+
+  const handleProjectUpdated = () => {
+    if (selectedProject) {
+      setLastUpdatedProject(selectedProject.name);
+      // Clear the highlight after 5 seconds
+      setTimeout(() => {
+        setLastUpdatedProject(null);
+      }, 5000);
+    }
+    
+    console.log('handleProjectUpdated called, about to refresh data...');
+    
+    // Close the drawer immediately
+    setIsDrawerOpen(false);
+    setSelectedProject(null);
+    
+    // Force invalidate all Project cache
+    globalMutate(
+      (key) => typeof key === "string" && key.includes("Project"),
+      undefined,
+      { revalidate: true }
+    );
+    
+    // Also force invalidate specific patterns
+    globalMutate('/api/resource/Project');
+    globalMutate('Project');
+    
+    // Immediately call refresh without delay
+    if (onProjectsChange) {
+      console.log('Calling onProjectsChange to refresh data immediately');
+      onProjectsChange();
+    } else {
+      console.log('onProjectsChange is not available');
+    }
+    
+    // Also try after small delay as backup
+    setTimeout(() => {
+      if (onProjectsChange) {
+        console.log('Calling onProjectsChange again as backup');
+        onProjectsChange();
+      }
+    }, 100);
+  };
+
+  const handleProjectDeleted = () => {
+    setLastUpdatedProject(null);
+    if (onProjectsChange) {
+      onProjectsChange();
+    }
+  };
+
+  // Projects are already sorted by modified date from the service
+  // But let's add client-side sorting as backup to ensure proper ordering
+  const sortedProjects = useMemo(() => {
+    return [...projects].sort((a, b) => {
+      const aDate = new Date(a.modified || a.creation || 0);
+      const bDate = new Date(b.modified || b.creation || 0);
+      return bDate.getTime() - aDate.getTime();
+    });
+  }, [projects]);
 
   const getStatusColor = (status?: "Open" | "Completed" | "Cancelled") => {
     switch (status) {
@@ -59,9 +121,6 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
                 Progress
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Customer
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Budget
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -73,10 +132,12 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {projects.map((project) => (
+            {sortedProjects.map((project) => (
               <tr 
                 key={project.name} 
-                className="hover:bg-gray-50 cursor-pointer transition-colors"
+                className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                  lastUpdatedProject === project.name ? 'bg-green-50 border-l-4 border-green-400' : ''
+                }`}
                 onClick={() => handleProjectClick(project)}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -88,8 +149,16 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
                         </span>
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
+                    <div className="ml-4" style={{ maxWidth: '300px' }}>
+                      <div 
+                        className="text-sm font-medium text-gray-900 cursor-help"
+                        title={project.project_name} // Always show full name on hover
+                        style={{
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
                         {project.project_name}
                       </div>
                       <div className="text-sm text-gray-500">
@@ -115,9 +184,6 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {project.customer || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatCurrency(project.estimated_costing)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -129,8 +195,8 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
                 >
                   <ProjectActions 
                     project={project}
-                    onProjectUpdated={onProjectsChange}
-                    onProjectDeleted={onProjectsChange}
+                    onProjectUpdated={handleProjectUpdated}
+                    onProjectDeleted={handleProjectDeleted}
                     onCloseDrawer={handleCloseDrawer}
                   />
                 </td>

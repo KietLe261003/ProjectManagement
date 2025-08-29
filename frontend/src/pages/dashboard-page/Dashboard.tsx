@@ -17,10 +17,8 @@ export const Dashboard: React.FC = () => {
     // allPhases,
     filteredData, 
     selectedProject, 
-    selectedDepartment,
     selectedTeam,
     setSelectedProject, 
-    setSelectedDepartment,
     setSelectedTeam,
     isLoading 
   } = useProjectData();
@@ -51,19 +49,19 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center">
-          Bảng điều khiển quản lý dự án
-        </h1>
-
-        <ProjectFilter
-          projects={allProjects}
-          selectedProject={selectedProject}
-          selectedDepartment={selectedDepartment}
-          selectedTeam={selectedTeam}
-          onProjectChange={setSelectedProject}
-          onDepartmentChange={setSelectedDepartment}
-          onTeamChange={setSelectedTeam}
-        />
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 text-center flex-1">
+            Bảng điều khiển quản lý dự án
+          </h1>
+          
+          <ProjectFilter
+            projects={allProjects}
+            selectedProject={selectedProject}
+            selectedTeam={selectedTeam}
+            onProjectChange={setSelectedProject}
+            onTeamChange={setSelectedTeam}
+          />
+        </div>
 
         <DashboardMetrics
           projects={filteredData.filteredProjects}
@@ -90,11 +88,11 @@ export const Dashboard: React.FC = () => {
           tasks={filteredData.filteredTasks}
         /> */}
         
-        <TaskManagement
+        {/* <TaskManagement
           projects={filteredData.filteredProjects}
           phases={filteredData.filteredPhases}
           tasks={filteredData.filteredTasks}
-        />
+        /> */}
 
         {/* <TimeTracking
           timesheets={filteredData.filteredTimesheets}
