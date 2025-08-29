@@ -9,6 +9,7 @@ import type { ProjectCreateData } from '@/services/projectService';
 import { useForm, Controller } from 'react-hook-form';
 import { Combobox } from '@/components/input/Combobox';
 import { toast } from '@/utils/toastUtils';
+import { useFrappeAuth, useFrappeGetDoc } from 'frappe-react-sdk';
 
 interface EditProjectProps {
   project: Project | null;
@@ -19,6 +20,38 @@ interface EditProjectProps {
 
 const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onSuccess }) => {
   const { updateProject, isLoading } = useUpdateProject();
+  const { currentUser } = useFrappeAuth();
+
+  // Fetch complete project data with users field
+  const { data: fullProjectData } = useFrappeGetDoc(
+    "Project",
+    project?.name || "",
+    project?.name ? "Project" : undefined
+  );
+
+  // Get project users to check permissions
+  const projectUsers = fullProjectData?.users || project?.users || [];
+
+  // Check if current user can change project status to Completed
+  const canMarkAsCompleted = () => {
+    // Administrator can always mark as completed
+    if (currentUser === 'Administrator') {
+      return true;
+    }
+
+    // Project owner can mark as completed
+    if (project?.owner === currentUser) {
+      return true;
+    }
+
+    // Check if user is Project Manager (Owner Substitute)
+    const currentUserInProject = projectUsers.find((user: any) => user.user === currentUser);
+    if (currentUserInProject?.project_status === 'Project Manager (Owner Substitute)') {
+      return true;
+    }
+
+    return false;
+  };
   
   const {
     register,
@@ -63,6 +96,14 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
 
   const onSubmit = async (data: ProjectCreateData) => {
     if (!project) return;
+
+    // Check if user is trying to set status to Completed without permission
+    if (data.status === 'Completed' && !canMarkAsCompleted()) {
+      toast.error("Permission denied", {
+        description: "You don't have permission to mark this project as Completed. Only Project Owner, Project Manager, or Administrator can do this.",
+      });
+      return;
+    }
 
     try {
       await updateProject(project.name, data);
@@ -190,7 +231,7 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
 
           {/* Status and Priority */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <Label>Status</Label>
               <select
                 {...register("status")}
@@ -198,12 +239,17 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
               >
                 <option value="">Select status...</option>
                 <option value="Open">Open</option>
-                <option value="Completed">Completed</option>
+                {canMarkAsCompleted() && <option value="Completed">Completed</option>}
                 <option value="Cancelled">Cancelled</option>
               </select>
+              {!canMarkAsCompleted() && (
+                <span className="text-xs text-amber-600">
+                 You dont have permission to mark Completed
+                </span>
+              )}
             </div>
 
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <Label>Priority</Label>
               <select
                 {...register("priority")}
@@ -213,7 +259,7 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>
-                <option value="Critical">Critical</option>
+                <option value="Urgent">Urgent</option>
               </select>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useFrappeGetDocList } from 'frappe-react-sdk';
+import { useFrappeGetDocList, useFrappeAuth, useFrappeGetDoc } from 'frappe-react-sdk';
 import { useProjectUsers } from '@/services/projectUsersService';
 import { useUpdatePhase, usePhaseAssignment } from '@/services/phaseService';
 import { toast } from '@/utils/toastUtils';
@@ -19,15 +19,47 @@ interface EditPhaseProps {
 const EditPhase: React.FC<EditPhaseProps> = ({ phase, projectName, isOpen, onClose, onSuccess }) => {
   const { updatePhase, isLoading: updateLoading, error: updateError } = useUpdatePhase();
   const { assignPhase, unassignPhase } = usePhaseAssignment();
+  const { currentUser } = useFrappeAuth();
   
   // Fetch project users for assignment dropdown
   const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
+  
+  // Fetch complete project data with users field
+  const { data: fullProjectData } = useFrappeGetDoc(
+    "Project",
+    projectName || "",
+    projectName ? "Project" : undefined
+  );
+
+  // Get project users and project info for permission checking
+  const projectUsersData = fullProjectData?.users || [];
   
   // Fetch current ToDo assignments for this phase
   const { data: existingToDos } = useFrappeGetDocList('ToDo', {
     fields: ['name', 'allocated_to'],
     filters: [['reference_type', '=', 'project_phase'], ['reference_name', '=', phase?.name || '']],
   });
+
+  // Check if current user can change phase status to Completed
+  const canMarkAsCompleted = () => {
+    // Administrator can always mark as completed
+    if (currentUser === 'Administrator') {
+      return true;
+    }
+
+    // Project owner can mark as completed
+    if (fullProjectData?.owner === currentUser) {
+      return true;
+    }
+
+    // Check if user is Project Manager (Owner Substitute)
+    const currentUserInProject = projectUsersData.find((user: any) => user.user === currentUser);
+    if (currentUserInProject?.project_status === 'Project Manager (Owner Substitute)') {
+      return true;
+    }
+
+    return false;
+  };
   
   const [formData, setFormData] = useState({
     subject: '',
@@ -72,6 +104,14 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, projectName, isOpen, onClo
     e.preventDefault();
     
     if (!phase) return;
+
+    // Check if user is trying to set status to Completed without permission
+    if (formData.status === 'Completed' && !canMarkAsCompleted()) {
+      toast.error("Permission denied", {
+        description: "You don't have permission to mark this phase as Completed. Only Project Owner, Project Manager, or Administrator can do this.",
+      });
+      return;
+    }
 
     try {
       // Prepare phase data (exclude assign_to as it's not a phase field)
@@ -167,9 +207,14 @@ const EditPhase: React.FC<EditPhaseProps> = ({ phase, projectName, isOpen, onClo
                 <option value="Open">Open</option>
                 <option value="Working">Working</option>
                 <option value="Pending Review">Pending Review</option>
-                <option value="Completed">Completed</option>
+                {canMarkAsCompleted() && <option value="Completed">Completed</option>}
                 <option value="Cancelled">Cancelled</option>
               </select>
+              {!canMarkAsCompleted() && (
+                <span className="text-xs text-amber-600">
+                  You don't have permission to mark Completed
+                </span>
+              )}
             </div>
 
             <div className="space-y-2">

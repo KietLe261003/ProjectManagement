@@ -384,6 +384,11 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     return project?.owner === currentUser || currentUser === 'Administrator';
   };
 
+  // Check if current user is Administrator only
+  const isCurrentUserAdmin = () => {
+    return currentUser === 'Administrator';
+  };
+
   const handleEditOwner = async (data: OwnerFormData) => {
     if (!project?.name) return;
 
@@ -858,7 +863,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                       <Crown className="h-6 w-6 text-yellow-600" />
                       <h3 className="text-xl font-semibold text-gray-900">Project Owner</h3>
                     </div>
-                    {isCurrentUserOwner() && (
+                    {isCurrentUserAdmin() && (
                       <Button
                         variant="outline"
                         size="sm"
