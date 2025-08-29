@@ -34,7 +34,6 @@ import { SubTaskDetails } from '../subtask/SubTaskDetails'
 import EditProject from './EditProject'
 import DeleteProject from './DeleteProject'
 import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate'
-import { CreateStandaloneTask } from '../task'
 
 interface DetailProjectProps {
   project: Project | null
@@ -82,58 +81,17 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     project?.name ? "Project" : undefined
   );
 
-  // Fetch phases for progress calculation with tasks field
-  const { data: projectPhasesList, mutate: mutatePhasesList } = useFrappeGetDocList('project_phase', {
+  // Fetch phases for progress calculation
+  const { data: projectPhases } = useFrappeGetDocList('project_phase', {
     fields: ['name', 'progress'],
     filters: [['project', '=', project?.name || '']],
     orderBy: { field: 'creation', order: 'asc' },
     limit: 0 // Get all phases
   });
 
-  // Fetch individual phase documents to get child table data (same as ProjectTaskManagement)
-  const [projectPhases, setProjectPhases] = useState<any[]>([]);
-  
-  useEffect(() => {
-    if (projectPhasesList && projectPhasesList.length > 0) {
-      const fetchPhasesWithTasks = async () => {
-        const results = [];
-        for (const phase of projectPhasesList) {
-          try {
-            // Use frappe.client.get to get full document with child tables
-            const response = await fetch(`/api/resource/project_phase/${phase.name}`, {
-              headers: {
-                'Accept': 'application/json',
-                'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
-              },
-              credentials: 'include'
-            });
-            
-            if (response.ok) {
-              const phaseDoc = await response.json();
-              results.push(phaseDoc.data);
-            } else {
-              console.warn('Failed to fetch phase:', phase.name);
-              // Fallback to the basic phase data
-              results.push(phase);
-            }
-          } catch (error) {
-            console.error('Error fetching phase:', phase.name, error);
-            // Fallback to the basic phase data
-            results.push(phase);
-          }
-        }
-        setProjectPhases(results);
-      };
-      
-      fetchPhasesWithTasks();
-    } else {
-      setProjectPhases([]);
-    }
-  }, [projectPhasesList?.length, projectPhasesList?.map(p => `${p.name}-${p.progress}`).join(',')]);  // Include progress in dependencies
-
-  // Fetch all tasks for progress calculation
-  const { data: projectTasks, mutate: mutateProjectTasks } = useFrappeGetDocList('Task', {
-    fields: ['name', 'progress', 'subject'],
+  // Fetch tasks for progress calculation (fallback when no phases)
+  const { data: projectTasks } = useFrappeGetDocList('Task', {
+    fields: ['name', 'progress'],
     filters: [['project', '=', project?.name || '']],
     orderBy: { field: 'creation', order: 'asc' },
     limit: 0 // Get all tasks
@@ -172,126 +130,24 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   const projectUsers = fullProjectData?.users || project?.users || [];
   const loadingUsers = loadingProject;
 
-  // Calculate project progress based on Phase Progress + Standalone Task Progress
+  // NEW APPROACH: Display project progress directly from project.percent_complete
   const calculatedProgress = useMemo(() => {
-   
-    if (projectTasks && projectTasks.length > 0) {
-      // Filter standalone tasks using the exact same logic as ProjectTaskManagement
-      const standaloneTasks = projectTasks.filter((task: any) => {
-        if (!projectPhases || projectPhases.length === 0) {
-          return true; // All tasks are standalone if no phases
-        }
-        
-        const isInPhase = projectPhases.some((phase: any) => 
-          phase.tasks?.some((phaseTask: any) => phaseTask.task === task.name)
-        );
-        return !isInPhase; // Return tasks NOT in any phase
-      });
-           
-      // Debug: Show which tasks are in phases
-      if (projectPhases && projectPhases.length > 0) {
-        const tasksInPhases: string[] = [];
-        projectPhases.forEach((phase: any) => {
-          if (phase.tasks && phase.tasks.length > 0) {
-            phase.tasks.forEach((phaseTask: any) => {
-              if (phaseTask.task) {
-                tasksInPhases.push(phaseTask.task);
-              }
-            });
-          }
-        });
-      }
-      
-      // Calculate progress: Phase Progress + Standalone Task Progress
-      let totalProgress = 0;
-      let totalComponents = 0;
-      
-      // Add Phase Progress (each phase counts as 1 component)
-      if (projectPhases && projectPhases.length > 0) {
-        projectPhases.forEach((phase: any) => {
-          const phaseProgress = phase.progress || 0;
-          totalProgress += phaseProgress;
-          totalComponents += 1;
-        });
-      }
-      
-      // Add Standalone Task Progress (each standalone task counts as 1 component)
-      if (standaloneTasks.length > 0) {
-        standaloneTasks.forEach((task: any) => {
-          const taskProgress = task.progress || 0;
-          totalProgress += taskProgress;
-          totalComponents += 1;
-        });
-      }
-      
-      const finalProgress = totalComponents > 0 ? Math.round(totalProgress / totalComponents) : 0;
-      
-      // Calculate phase task names for display purposes
-      let phaseTaskNames: string[] = [];
-      if (projectPhases && projectPhases.length > 0) {
-        projectPhases.forEach((phase: any) => {
-          if (phase.tasks && phase.tasks.length > 0) {
-            phase.tasks.forEach((phaseTask: any) => {
-              if (phaseTask.task) {
-                phaseTaskNames.push(phaseTask.task);
-              }
-            });
-          }
-        });
-      }
-      
-      return {
-        progress: finalProgress,
-        source: 'mixed', // Phase + Standalone
-        count: totalComponents,
-        phases: projectPhases || [],
-        phaseTasksCount: phaseTaskNames.length,
-        standaloneTasksCount: standaloneTasks.length,
-        phaseTaskNames,
-        standaloneTasks
-      };
-    }
-    
-    // Fallback to manual progress if no tasks
     return {
       progress: fullProjectData?.percent_complete || project?.percent_complete || 0,
-      source: 'manual',
-      count: 0,
-      phases: [],
-      phaseTasksCount: 0,
-      standaloneTasksCount: 0,
-      phaseTaskNames: [],
-      standaloneTasks: []
+      source: 'project',
+      count: 1
     };
-  }, [projectPhases, projectTasks, fullProjectData?.percent_complete, project?.percent_complete, 
-      // Add more specific dependencies
-      projectPhases?.map(p => p.progress).join(','),
-      projectTasks?.map(t => t.progress).join(','),
-      projectPhases?.length,
-      projectTasks?.length
-    ]);
+  }, [fullProjectData?.percent_complete, project?.percent_complete]);
 
   // Function to manually recalculate progress
   const handleRecalculateProgress = async () => {
     if (!project?.name) return;
+    
     setIsCalculatingProgress(true);
     try {
-      // First refresh all data
-      await Promise.all([
-        mutatePhasesList(),
-        mutateProjectTasks(),
-        refreshProject()
-      ]);
-      
-      // Wait a bit for data to settle
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Then update progress
-      const result = await updateProjectProgress(project.name);
-      
-      // Final refresh of project data
+      await updateProjectProgress(project.name);
+      // Refresh project data
       await refreshProject();
-      
     } catch (error) {
       console.error('Error recalculating project progress:', error);
     } finally {
@@ -328,19 +184,6 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     }
   };
 
-  // Function to force refresh all project data
-  const forceRefreshAllData = async () => {
-    try {
-      await Promise.all([
-        mutatePhasesList(),
-        mutateProjectTasks(),
-        refreshProject()
-      ]);
-    } catch (error) {
-      console.error('Error in force refresh:', error);
-    }
-  };
-
   // Auto-update selectedSubTask when subtaskData changes
   useEffect(() => {
     if (subtaskData && selectedSubTask?.name === subtaskData.name) {
@@ -355,29 +198,17 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     }
   }, [taskData, selectedTask?.name]);
 
+  // COMMENTED OUT - OLD AUTO-UPDATE PROGRESS LOGIC
   // Auto-update project progress when phases or tasks change
-  useEffect(() => {
-    if (calculatedProgress.source !== 'manual' && project?.name && fullProjectData) {
-      const currentDbProgress = fullProjectData?.percent_complete || project?.percent_complete || 0;
-      if (Math.abs(calculatedProgress.progress - currentDbProgress) > 1) {
-        // Only update if there's a significant difference (more than 1%)
-        handleRecalculateProgress();
-      }
-    }
-  }, [calculatedProgress.progress, projectPhases?.length, projectTasks?.length, fullProjectData?.percent_complete]);
-
-  // Add a polling mechanism to keep data fresh
-  useEffect(() => {
-    if (!project?.name) return;
-    
-    const pollInterval = setInterval(() => {
-      refreshProject();
-      mutatePhasesList();
-      mutateProjectTasks();
-    }, 10000); // Poll every 10 seconds
-    
-    return () => clearInterval(pollInterval);
-  }, [project?.name, refreshProject, mutatePhasesList, mutateProjectTasks]);
+  // useEffect(() => {
+  //   if (calculatedProgress.source !== 'manual' && project?.name) {
+  //     const currentDbProgress = fullProjectData?.percent_complete || project?.percent_complete || 0;
+  //     if (Math.abs(calculatedProgress.progress - currentDbProgress) > 1) {
+  //       // Only update if there's a significant difference (more than 1%)
+  //       handleRecalculateProgress();
+  //     }
+  //   }
+  // }, [calculatedProgress.progress, projectPhases, projectTasks]);
 
   // Form hooks for member management
   const addMemberForm = useForm<MemberFormData>();
@@ -639,6 +470,8 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString()
   }
+
+  // Handle edit project
   const handleEditProject = () => {
     setShowEditProjectDialog(true);
   };
@@ -839,25 +672,13 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-medium text-gray-700">Overall Progress</span>
-                        {calculatedProgress.source === 'manual' && (
-                          <span className="text-xs text-gray-500">
-                            (manual)
-                          </span>
-                        )}
+                        <span className="text-lg font-medium text-gray-700">Project Progress</span>
+                        <span className="text-xs text-gray-500">
+                          {/* (from project.percent_complete) */}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-2xl font-bold text-blue-600">{calculatedProgress.progress}%</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleRecalculateProgress}
-                          disabled={isCalculatingProgress}
-                          className="h-8 w-8 p-0"
-                          title="Recalculate progress"
-                        >
-                          <RefreshCw className={`h-4 w-4 ${isCalculatingProgress ? 'animate-spin' : ''}`} />
-                        </Button>
                       </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-4">
@@ -866,40 +687,6 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                         style={{ width: `${calculatedProgress.progress}%` }}
                       ></div>
                     </div>
-                    {calculatedProgress.source === 'mixed' && calculatedProgress.count > 0 && (
-                      <div className="mt-3 text-xs text-gray-500 space-y-2">
-                        {/* Phase Progress Breakdown */}
-                        {calculatedProgress.phases && calculatedProgress.phases.length > 0 && (
-                          <div>
-                            <div className="font-medium mb-1">Phase Progress Breakdown:</div>
-                            <div className="grid grid-cols-2 gap-1">
-                              {calculatedProgress.phases.map((phase: any, index: number) => (
-                                <div key={phase.name} className="flex justify-between">
-                                  <span>Phase {index + 1}:</span>
-                                  <span>{phase.progress || 0}%</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Standalone Tasks Summary */}
-                        {calculatedProgress.standaloneTasksCount > 0 && (
-                          <div className="mt-2">
-                            <div className="font-medium mb-1">Standalone Tasks:</div>
-                            <div className="flex justify-between">
-                              <span>{calculatedProgress.standaloneTasksCount} tasks not in any phase</span>
-                            </div>
-                          </div>
-                        )}
-
-                      </div>
-                    )}
-                    {calculatedProgress.source === 'manual' && (
-                      <div className="mt-3 text-xs text-gray-500">
-                        Progress set manually (no tasks found)
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1220,30 +1007,18 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     setActiveTab('task-details');
                   }}
                   onPhaseUpdated={async () => {
-                    // Force refresh all data when phase is updated
-                    await forceRefreshAllData();
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                    // Refresh project data when phase is updated
+                    refreshProject();
                   }}
                   onPhaseDeleted={async () => {
-                    // Force refresh all data when phase is deleted
-                    await forceRefreshAllData();
+                    // Refresh project data and go back to tasks when phase is deleted
+                    refreshProject();
                     setActiveTab('tasks');
                     setSelectedPhase(null);
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
                   }}
                   onTaskCreated={async () => {
-                    // Force refresh all data when task is created
-                    await forceRefreshAllData();
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                    // Refresh project data when task is created
+                    refreshProject();
                   }}
                 />
               </div>
@@ -1260,24 +1035,16 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     setActiveTab('subtask-details');
                   }}
                   onTaskUpdated={async () => {
-                    // Force refresh all data when task is updated
-                    await forceRefreshAllData();
+                    // Refresh project data when task is updated
+                    refreshProject();
                     // Refresh task data to show updated information
                     await handleRefreshTask();
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
                   }}
                   onTaskDeleted={async () => {
-                    // Force refresh all data when task is deleted
-                    await forceRefreshAllData();
+                    // Refresh project data and go back to tasks when task is deleted
+                    refreshProject();
                     setActiveTab('tasks');
                     setSelectedTask(null);
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
                   }}
                 />
               </div>
@@ -1290,28 +1057,22 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   projectName={project.name}
                   onBack={() => setActiveTab('tasks')}
                   onSubTaskUpdated={async () => {
-                    // Force refresh all data when subtask is updated
-                    await forceRefreshAllData();
+                    // Refresh project data when subtask is updated
+                    refreshProject();
                     // Refresh subtask data to show updated information
                     await handleRefreshSubTask();
                     // Refresh parent task data to update task progress
                     if (selectedSubTask?.task) {
                       await handleRefreshTaskByName(selectedSubTask.task);
                     }
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+              
                   }}
                   onSubTaskDeleted={async () => {
-                    // Force refresh all data when subtask is deleted
-                    await forceRefreshAllData();
+                    // Refresh project data and go back to tasks when subtask is deleted
+                    refreshProject();
                     setActiveTab('tasks');
                     setSelectedSubTask(null);
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                   
                   }}
                 />
               </div>
