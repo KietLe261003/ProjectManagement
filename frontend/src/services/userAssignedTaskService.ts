@@ -1,7 +1,4 @@
-import {
-  useFrappeGetDocList,
-  useFrappeAuth,
-} from "frappe-react-sdk";
+import { useFrappeGetDocList, useFrappeAuth } from "frappe-react-sdk";
 import type { Task } from "../types/Projects/Task";
 import type { SubTask } from "../types/Todo/SubTask";
 import type { ToDo } from "../types/Desk/ToDo";
@@ -86,6 +83,7 @@ export class UserAssignedTaskService {
       data: tasks,
       isLoading: tasksLoading,
       error: tasksError,
+      mutate: mutateTaskDetail,
     } = useFrappeGetDocList<Task>(
       "Task",
       {
@@ -121,6 +119,7 @@ export class UserAssignedTaskService {
       data: subTasks,
       isLoading: subTasksLoading,
       error: subTasksError,
+      mutate: mutateSubTaskDetail,
     } = useFrappeGetDocList<SubTask>(
       "SubTask",
       {
@@ -242,6 +241,8 @@ export class UserAssignedTaskService {
 
     const mutate = () => {
       mutateTodos();
+      mutateTaskDetail();
+      mutateSubTaskDetail();
     };
 
     return {
@@ -254,13 +255,7 @@ export class UserAssignedTaskService {
       currentUser,
     };
   }
-  //getRoleOfTeam
-  static getRoleOfTeam(): "Leader" | "Member" | null {
-    return "Leader";
-  }
-}
 
+}
 // Export hook for easier usage
-export const useUserAssignedTasks =
-  UserAssignedTaskService.useUserAssignedTasks;
-export const useUserRoleOfTeam = UserAssignedTaskService.getRoleOfTeam;
+export const useUserAssignedTasks = UserAssignedTaskService.useUserAssignedTasks;

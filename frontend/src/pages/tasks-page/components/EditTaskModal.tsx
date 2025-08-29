@@ -15,9 +15,10 @@ interface EditTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  isLeader: boolean;
 }
 
-export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onClose, onSuccess }) => {
+export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onClose, onSuccess, isLeader }) => {
   const isSubTask = task?.type === 'SubTask';
   
   // Task services
@@ -105,9 +106,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!task) return;
-
     // Validate date fields
     if (formData.start_date && formData.end_date) {
       const startDate = new Date(formData.start_date);
@@ -118,7 +117,6 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
         return;
       }
     }
-
     // Validate against project end date (only for tasks)
     if (!isSubTask && formData.end_date && projectData?.expected_end_date) {
       const taskEndDate = new Date(formData.end_date);
@@ -129,7 +127,6 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
         return;
       }
     }
-
     try {
       // Handle assignment changes
       const currentAssignment = existingToDos?.[0]?.allocated_to || '';
@@ -308,9 +305,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                 <option value="Working">Working</option>
                 <option value="Pending Review">Pending Review</option>
                 {!isSubTask && <option value="Overdue">Overdue</option>}
-                {!isSubTask && <option value="Template">Template</option>}
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
+                {isLeader && <option value="Completed">Completed</option> }
+                {isLeader && <option value="Cancelled">Cancelled</option>}
               </select>
             </div>
 

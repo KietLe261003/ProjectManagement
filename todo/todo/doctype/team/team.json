@@ -9,7 +9,8 @@
   "section_break_7f8l",
   "team",
   "department",
-  "team_member"
+  "team_member",
+  "teamlead"
  ],
  "fields": [
   {
@@ -33,12 +34,18 @@
    "fieldtype": "Table",
    "label": "Team member",
    "options": "team_member"
+  },
+  {
+   "fieldname": "teamlead",
+   "fieldtype": "Link",
+   "label": "TeamLead",
+   "options": "User"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-28 08:12:28.701296",
+ "modified": "2025-08-28 19:00:57.464368",
  "modified_by": "abcxyz@gmail.com",
  "module": "Todo",
  "name": "Team",

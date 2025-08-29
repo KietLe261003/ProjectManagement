@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import { useFrappeGetDocList } from 'frappe-react-sdk';
-import type { team_member } from '@/types/Todo/team_member';
+import {  useFrappeGetDoc, useFrappeGetDocList } from 'frappe-react-sdk';
 import type { User } from '@/types/Core/User';
 import type { TaskItem } from '@/types';
 import { useAllTeamTasks } from '@/services/teamTaskService';
 import { useAlternativeTeamData } from '@/services/alternativeTeamService';
 import { useAllTodos } from '@/services/todoService';
+import type { Team } from '@/types/Todo/Team';
 
 export interface TeamMemberData {
   id: string;
@@ -17,13 +17,9 @@ export interface TeamMemberData {
   user: User | undefined;
 }
 
-export const useTeamData = () => {
-  // Fetch team members data with error handling
-  const { data: teamMembers, isLoading: isLoadingTeamMembers, error: teamMembersError } = useFrappeGetDocList<team_member>('team_member', {
-    fields: ['user', 'role', 'parent'],
-    limit: 0
-  });
-
+export const useTeamData = ({team}:{team:string}) => {
+  const {data: teamMember1,isLoading: isLoadingTeamMembers, error: teamMembersError }=useFrappeGetDoc<Team>('Team',team)
+  const teamMembers=teamMember1?.team_member
   // Fetch user data to get full names and avatars
   const { data: users, isLoading: isLoadingUsers, error: usersError } = useFrappeGetDocList<User>('User', {
     fields: ['name', 'full_name', 'user_image', 'first_name', 'last_name', 'email'],
@@ -102,7 +98,6 @@ export const useTeamData = () => {
         endDate: subTask.end_date
       });
     });
-
     return taskItems.sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
   }, [allTasks, allSubTasks, todos]);
 

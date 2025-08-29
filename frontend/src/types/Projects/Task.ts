@@ -1,4 +1,4 @@
-import { TaskDependsOn } from './TaskDependsOn'
+import type { TaskDependsOn } from './TaskDependsOn'
 
 export interface Task{
 	name: string

@@ -17,4 +17,6 @@ export interface Team{
 	department?: string
 	/**	Team member : Table - team_member	*/
 	team_member?: team_member[]
+	/**	TeamLead : Link - User	*/
+	teamlead?: string
 }

@@ -1,4 +1,3 @@
-
 export interface team_member{
 	name: string
 	creation: string
