@@ -1,21 +1,24 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Calendar, DollarSign, User, Users, Crown, Plus, Edit, Trash2 } from "lucide-react"
-import { useFrappeGetDoc, useFrappePostCall, useFrappeAuth, useFrappeGetDocList } from "frappe-react-sdk"
-import { useForm, Controller } from "react-hook-form"
-import { mutate } from 'swr'
-
-import { Button } from "@/components/ui/button"
-import { Combobox } from "@/components/input/Combobox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState, useEffect, useMemo } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Calendar,
+  DollarSign,
+  User,
+  Users,
+  Crown,
+  Plus,
+  Edit,
+  Trash2,
+} from "lucide-react";
+import {
+  useFrappeGetDoc,
+  useFrappePostCall,
+  useFrappeAuth,
+} from "frappe-react-sdk";
+import { useForm } from "react-hook-form";
+import { mutate } from "swr";
+
+import { Button } from "@/components/ui/button";
+
 import {
   Drawer,
   DrawerContent,
@@ -23,45 +26,55 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
-} from "@/components/ui/drawer"
-import { FileAttachments } from "@/components/FileAttachments"
-import type { Project } from '@/types/Projects/Project'
-import type { ProjectUser } from '@/types/Projects/ProjectUser'
-import { formatCurrency } from '@/utils/formatCurrency'
-import { ProjectTaskManagement } from '../ProjectTaskManagement'
-import { PhaseDetails } from '../phase/PhaseDetails'
-import { TaskDetails } from '../task/TaskDetails'
-import { SubTaskDetails } from '../subtask/SubTaskDetails'
-import EditProject from './EditProject'
-import DeleteProject from './DeleteProject'
+} from "@/components/ui/drawer";
+import { FileAttachments } from "@/components/FileAttachments";
+import type { Project } from "@/types/Projects/Project";
+import { formatCurrency } from "@/utils/formatCurrency";
+import { ProjectTaskManagement } from "../ProjectTaskManagement";
+import { PhaseDetails } from "../phase/PhaseDetails";
+import { TaskDetails } from "../task/TaskDetails";
+import { SubTaskDetails } from "../subtask/SubTaskDetails";
+import EditProject from "./EditProject";
+import DeleteProject from "./DeleteProject";
+import { AddTeamMemberDialog } from "./AddTeamMemberDialog";
 // import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate'
 
 interface DetailProjectProps {
-  project: Project | null
-  isOpen: boolean
-  onClose: () => void
-}
-
-interface MemberFormData {
-  user: string
-  view_attachments?: boolean
-  hide_timesheets?: boolean
-  project_status?: string
+  project: Project | null;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 interface OwnerFormData {
-  owner: string
+  owner: string;
 }
 
-export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'team' | 'phase-details' | 'task-details' | 'subtask-details'>('overview');
+interface MemberFormData {
+  user: string;
+  view_attachments?: boolean;
+  hide_timesheets?: boolean;
+  project_status?: string;
+}
+
+export function DetailProject({
+  project,
+  isOpen,
+  onClose,
+}: DetailProjectProps) {
+  const [activeTab, setActiveTab] = useState<
+    | "overview"
+    | "tasks"
+    | "team"
+    | "phase-details"
+    | "task-details"
+    | "subtask-details"
+  >("overview");
   const [selectedPhase, setSelectedPhase] = useState<any>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedSubTask, setSelectedSubTask] = useState<any>(null);
 
   // Member management states
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
-  const [editingMember, setEditingMember] = useState<ProjectUser | null>(null);
   const [showEditMemberDialog, setShowEditMemberDialog] = useState(false);
 
   // Owner management states
@@ -78,12 +91,11 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   useEffect(() => {
     if (!isOpen) {
       // Reset all states when modal closes
-      setActiveTab('overview');
+      setActiveTab("overview");
       setSelectedPhase(null);
       setSelectedTask(null);
       setSelectedSubTask(null);
       setShowAddMemberDialog(false);
-      setEditingMember(null);
       setShowEditMemberDialog(false);
       setShowEditOwnerDialog(false);
       setShowEditProjectDialog(false);
@@ -92,20 +104,11 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     }
   }, [isOpen]);
 
-  // Reset form states when add member dialog closes
-  useEffect(() => {
-    if (!showAddMemberDialog) {
-      addMemberForm.reset();
-      addMemberForm.clearErrors();
-    }
-  }, [showAddMemberDialog]);
-
   // Reset form states when edit member dialog closes
   useEffect(() => {
     if (!showEditMemberDialog) {
       editMemberForm.reset();
       editMemberForm.clearErrors();
-      setEditingMember(null);
     }
   }, [showEditMemberDialog]);
 
@@ -118,20 +121,26 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   }, [showEditOwnerDialog]);
 
   // Fetch complete project data with users field
-  const { data: fullProjectData, isLoading: loadingProject, mutate: refreshProject } = useFrappeGetDoc(
+  const {
+    data: fullProjectData,
+    isLoading: loadingProject,
+    mutate: refreshProject,
+  } = useFrappeGetDoc(
     "Project",
     project?.name || "",
     project?.name ? "Project" : undefined
   );
-
-
-  const { call: insertCall } = useFrappePostCall('frappe.client.insert');
-  const { call: saveCall } = useFrappePostCall('frappe.client.save');
-  const { call: deleteCall } = useFrappePostCall('frappe.client.delete');
-  const { call: setValueCall } = useFrappePostCall('frappe.client.set_value');
+  const { call: deleteCall } = useFrappePostCall("frappe.client.delete");
+  const { call: removeMemberCall } = useFrappePostCall(
+    "todo.api.remove_project_member"
+  );
 
   // Fetch project owner details
-  const { data: ownerData, error: ownerError, isLoading: ownerLoading } = useFrappeGetDoc(
+  const {
+    data: ownerData,
+    error: ownerError,
+    isLoading: ownerLoading,
+  } = useFrappeGetDoc(
     "User",
     project?.owner || "",
     project?.owner ? undefined : null // Only fetch if owner exists
@@ -161,9 +170,10 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   // NEW APPROACH: Display project progress directly from project.percent_complete
   const calculatedProgress = useMemo(() => {
     return {
-      progress: fullProjectData?.percent_complete || project?.percent_complete || 0,
-      source: 'project',
-      count: 1
+      progress:
+        fullProjectData?.percent_complete || project?.percent_complete || 0,
+      source: "project",
+      count: 1,
     };
   }, [fullProjectData?.percent_complete, project?.percent_complete]);
 
@@ -173,7 +183,7 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
       try {
         await refreshSubTask();
       } catch (error) {
-        console.error('Error refreshing subtask data:', error);
+        console.error("Error refreshing subtask data:", error);
       }
     }
   };
@@ -184,7 +194,7 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
       try {
         await refreshTask();
       } catch (error) {
-        console.error('Error refreshing task data:', error);
+        console.error("Error refreshing task data:", error);
       }
     }
   };
@@ -211,344 +221,125 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   }, [taskData, selectedTask?.name]);
 
   // Form hooks for member management
-  const addMemberForm = useForm<MemberFormData>();
   const editMemberForm = useForm<MemberFormData>();
   const editOwnerForm = useForm<OwnerFormData>();
-
-  // Helper function to safely close add member dialog
-  const closeAddMemberDialog = () => {
-    if (!updatingProject) {
-      setShowAddMemberDialog(false);
-      // Reset form data after a small delay to prevent flash
-      setTimeout(() => {
-        addMemberForm.reset();
-        addMemberForm.clearErrors();
-      }, 100);
-    }
-  };
-
-  // Helper function to safely close edit member dialog  
-  const closeEditMemberDialog = () => {
-    if (!updatingProject) {
-      setShowEditMemberDialog(false);
-      setEditingMember(null);
-      setTimeout(() => {
-        editMemberForm.reset();
-        editMemberForm.clearErrors();
-      }, 100);
-    }
-  };
-
-  // Helper function to safely close edit owner dialog
-  const closeEditOwnerDialog = () => {
-    if (!updatingProject) {
-      setShowEditOwnerDialog(false);
-      setTimeout(() => {
-        editOwnerForm.reset();
-        editOwnerForm.clearErrors();
-      }, 100);
-    }
-  };
-
-  // Functions for member management
-  const handleAddMember = async (data: MemberFormData) => {
-    if (!project?.name) return;
-
-    // Prevent double submission
-    if (updatingProject) return;
-
-    setUpdatingProject(true);
-    
-    try {
-      const currentUsers = projectUsers || [];
-
-      // Check if user already exists
-      const existingUser = currentUsers.find((u: any) => u.user === data.user);
-      if (existingUser) {
-        alert('User is already a member of this project');
-        return;
-      }
-
-      // Prepare member data with defaults
-      const memberData = {
-        doctype: 'Project User',
-        parent: project.name,
-        parenttype: 'Project',
-        parentfield: 'users',
-        user: data.user,
-        view_attachments: data.view_attachments ? 1 : 0,
-        hide_timesheets: data.hide_timesheets ? 1 : 0,
-        project_status: data.project_status || 'Team Member',
-        welcome_email_sent: 1, // Flag to skip email
-      };
-
-      // Use direct API call to add child table row  
-      await insertCall({
-        doc: memberData
-      });
-
-      // Success handling
-      console.log('Member added successfully');
-      
-      // Close dialog immediately and reset form
-      setShowAddMemberDialog(false);
-      
-      // Reset form in next tick to prevent UI flash
-      setTimeout(() => {
-        addMemberForm.reset();
-        addMemberForm.clearErrors();
-      }, 0);
-
-      // Refresh data after a short delay to ensure backend processing is complete
-      setTimeout(() => {
-        refreshProject();
-      }, 1000);
-
-      // Show success message (avoid alert in production, use toast instead)
-      console.log('Member added successfully!');
-
-    } catch (error) {
-      console.error('Error adding member:', error);
-
-      // Handle different types of errors
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('Email Account') || 
-          errorMessage.includes('OutgoingEmailError') || 
-          errorMessage.includes('email') ||
-          errorMessage.includes('SMTP')) {
-        // Email error - member might still be added, just email failed
-        console.log('Email error detected, checking if member was added anyway');
-        
-        // Close dialog and refresh to check
-        setShowAddMemberDialog(false);
-        addMemberForm.reset();
-        addMemberForm.clearErrors();
-        
-        setTimeout(() => {
-          refreshProject();
-          alert('Member added successfully! (Welcome email failed to send, but member was added to project)');
-        }, 1000);
-        
-      } else if (errorMessage.includes('DuplicateEntryError') || 
-                 errorMessage.includes('already exists')) {
-        alert('This user is already a member of the project');
-        
-      } else if (errorMessage.includes('PermissionError') || 
-                 errorMessage.includes('Not permitted')) {
-        alert('You do not have permission to add members to this project');
-        
-      } else if (errorMessage.includes('ValidationError')) {
-        alert('Invalid data provided. Please check your input and try again.');
-        
-      } else {
-        // Generic error
-        alert(`Failed to add member: ${errorMessage}`);
-      }
-    } finally {
-      setUpdatingProject(false);
-    }
-  };
-
-  const handleEditMember = async (data: MemberFormData) => {
-    if (!editingMember || !project?.name) return;
-
-    setUpdatingProject(true);
-    try {
-      // Find the Project User record to update
-      const userRecord = projectUsers.find((u: any) => u.user === editingMember.user);
-      if (!userRecord?.name) {
-        alert('User record not found');
-        return;
-      }
-
-      // Use direct API call to update child table row
-      await saveCall({
-        doc: {
-          doctype: 'Project User',
-          name: userRecord.name,
-          view_attachments: data.view_attachments ? 1 : 0,
-          hide_timesheets: data.hide_timesheets ? 1 : 0,
-          project_status: data.project_status || '',
-        }
-      });
-
-      // Refresh data and close dialog
-      setTimeout(() => refreshProject(), 1000);
-      setShowEditMemberDialog(false);
-      setEditingMember(null);
-      editMemberForm.reset();
-    } catch (error) {
-      console.error('Error updating member:', error);
-      alert('Failed to update member');
-    } finally {
-      setUpdatingProject(false);
-    }
-  };
-
   const handleRemoveMember = async (userToRemove: string) => {
     if (!project?.name) return;
 
-    if (!confirm('Are you sure you want to remove this member from the project?')) {
+    if (
+      !confirm("Are you sure you want to remove this member from the project?")
+    ) {
       return;
     }
 
     try {
-      // Find the Project User record to delete
-      const userRecord = projectUsers.find((u: any) => u.user === userToRemove);
-      if (!userRecord?.name) {
-        alert('User record not found');
-        return;
-      }
-
-      // Use direct API call to delete child table row
-      await deleteCall({
-        doctype: 'Project User',
-        name: userRecord.name
+      // Use custom API that doesn't send notification email
+      const result = await removeMemberCall({
+        project_name: project.name,
+        user: userToRemove,
       });
 
-      // Refresh data
-      setTimeout(() => refreshProject(), 1000);
-    } catch (error) {
-      console.error('Error removing member:', error);
-      alert('Failed to remove member');
-    }
-  };
+      console.log("Member removed successfully:", result);
 
-  const openEditMemberDialog = (member: ProjectUser) => {
-    setEditingMember(member);
-    editMemberForm.reset({
-      user: member.user,
-      view_attachments: !!member.view_attachments,
-      hide_timesheets: !!member.hide_timesheets,
-      project_status: member.project_status || '',
-    });
-    setShowEditMemberDialog(true);
+      // Success - refresh data
+      setTimeout(() => refreshProject(), 1000);
+
+      // Show success message
+      alert("Member removed successfully!");
+    } catch (error) {
+      console.error("Error removing member:", error);
+
+      // Handle different types of errors gracefully
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      if (
+        errorMessage.includes("Email Account") ||
+        errorMessage.includes("OutgoingEmailError") ||
+        errorMessage.includes("email") ||
+        errorMessage.includes("SMTP")
+      ) {
+        // Email error - member might still be removed, just email failed
+        console.log(
+          "Email error detected when removing member, checking if removal was successful"
+        );
+
+        // Refresh to check if member was actually removed
+        setTimeout(() => {
+          refreshProject();
+          alert(
+            "Member removed successfully! (Email notification failed to send, but member was removed from project)"
+          );
+        }, 1000);
+      } else if (
+        errorMessage.includes("PermissionError") ||
+        errorMessage.includes("Not permitted")
+      ) {
+        alert(
+          "You do not have permission to remove members from this project."
+        );
+      } else if (errorMessage.includes("ValidationError")) {
+        alert("Cannot remove member: Validation error occurred.");
+      } else if (
+        errorMessage.includes("LinkExistsError") ||
+        errorMessage.includes("Cannot delete")
+      ) {
+        alert(
+          "Cannot remove member: This user may have linked records (tasks, timesheets, etc.). Please remove or reassign those records first."
+        );
+      } else if (errorMessage.includes("is not a member of this project")) {
+        alert("This user is not a member of the project.");
+        // Refresh to sync the UI
+        setTimeout(() => refreshProject(), 500);
+      } else {
+        // Generic error with fallback to old method
+        console.log("Custom API failed, trying fallback method");
+
+        try {
+          // Fallback to direct deletion
+          const userRecord = projectUsers.find(
+            (u: any) => u.user === userToRemove
+          );
+          if (userRecord?.name) {
+            await deleteCall({
+              doctype: "Project User",
+              name: userRecord.name,
+            });
+
+            setTimeout(() => refreshProject(), 1000);
+            alert("Member removed successfully! (Using fallback method)");
+          } else {
+            alert("User record not found.");
+          }
+        } catch (fallbackError) {
+          console.error("Fallback method also failed:", fallbackError);
+          alert(`Failed to remove member: ${errorMessage}`);
+        }
+      }
+    }
   };
 
   // Check if current user is the project owner
   const isCurrentUserOwner = () => {
-    return project?.owner === currentUser || currentUser === 'Administrator';
+    return project?.owner === currentUser || currentUser === "Administrator";
   };
-
-  const handleEditOwner = async (data: OwnerFormData) => {
-    if (!project?.name) return;
-
-    setUpdatingProject(true);
-    try {
-      // Refresh to get latest data first
-      await refreshProject();
-
-      // Get the complete project document
-      const fullProject = fullProjectData || project;
-
-      // Method 1: Try updating with complete document including owner change
-      try {
-        await saveCall({
-          doc: {
-            doctype: 'Project',
-            name: project.name,
-            owner: data.owner,
-            // Include all existing fields to avoid data loss
-            project_name: fullProject?.project_name,
-            status: fullProject?.status,
-            priority: fullProject?.priority,
-            company: fullProject?.company,
-            customer: fullProject?.customer,
-            expected_start_date: fullProject?.expected_start_date,
-            expected_end_date: fullProject?.expected_end_date,
-            description: fullProject?.description,
-            // Include any other fields that exist
-            modified: new Date().toISOString(),
-            modified_by: data.owner
-          }
-        });
-      } catch (saveError) {
-        console.log('Save method failed:', saveError);
-        // Method 2: Try using set_value (this might work in some ERPNext versions)
-        try {
-          await setValueCall({
-            doctype: 'Project',
-            name: project.name,
-            fieldname: 'owner',
-            value: data.owner
-          });
-        } catch (setValueError) {
-          console.log('Set value failed, falling back to Project Manager approach:', setValueError);
-
-          // Fallback: Add user as Project Manager since owner field cannot be changed
-          const currentUsers = projectUsers || [];
-          const existingUser = currentUsers.find((u: any) => u.user === data.owner);
-
-          if (existingUser) {
-            alert('Cannot change owner field (protected by ERPNext), but user is already a project member. Please edit their role manually.');
-            return;
-          }
-
-          // Add as Project Manager
-          await insertCall({
-            doc: {
-              doctype: 'Project User',
-              parent: project.name,
-              parenttype: 'Project',
-              parentfield: 'users',
-              user: data.owner,
-              view_attachments: 1,
-              hide_timesheets: 0,
-              project_status: 'Project Manager (Owner Substitute)',
-              welcome_email_sent: 1,
-            }
-          });
-
-          alert('Owner field is protected by ERPNext. Added user as "Project Manager (Owner Substitute)" instead with full permissions.');
-        }
-      }
-
-      // Refresh data and close dialog
-      setTimeout(() => refreshProject(), 1000);
-      setShowEditOwnerDialog(false);
-      editOwnerForm.reset();
-
-    } catch (error) {
-      console.error('Error changing owner:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      if (errorMessage.includes('Cannot edit standard fields') || errorMessage.includes('protects this field')) {
-        alert(`Cannot change project owner: ERPNext protects the owner field from modification.
-
-Alternative solutions:
-1. Add the user as Project Manager in the team members
-2. Contact system administrator to manually update via backend
-3. Use project permissions to grant the user full access
-
-Admin command (run in ERPNext console):
-frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${project.name}'")`);
-      } else {
-        alert('Failed to change owner: ' + errorMessage);
-      }
-    } finally {
-      setUpdatingProject(false);
-    }
-  };
-
   const getStatusColor = (status?: "Open" | "Completed" | "Cancelled") => {
     switch (status) {
-      case 'Open':
-        return 'bg-blue-100 text-blue-800'
-      case 'Completed':
-        return 'bg-green-100 text-green-800'
-      case 'Cancelled':
-        return 'bg-red-100 text-red-800'
+      case "Open":
+        return "bg-blue-100 text-blue-800";
+      case "Completed":
+        return "bg-green-100 text-green-800";
+      case "Cancelled":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-yellow-100 text-yellow-800'
+        return "bg-yellow-100 text-yellow-800";
     }
-  }
+  };
 
   const formatDate = (dateString?: string | null) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString()
-  }
-
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString();
+  };
   // Handle edit project
   const handleEditProject = () => {
     setShowEditProjectDialog(true);
@@ -562,7 +353,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
   // Handle edit success
   const handleEditSuccess = () => {
     refreshProject(); // Refresh current project data
-    
+
     // Also refresh the projects list in parent component if needed
     // This will help update any cached data throughout the app
     mutate(
@@ -588,17 +379,23 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
         <div className="w-full h-full overflow-y-auto p-6">
           <DrawerHeader className="px-0 pb-6">
             <DrawerTitle className="flex gap-4 justify-between">
-              <div className='flex items-center gap-4'>
+              <div className="flex items-center gap-4">
                 <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
                   <span className="text-2xl font-bold text-white">
                     {currentProject.project_name.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">{currentProject.project_name}</h2>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                    {currentProject.project_name}
+                  </h2>
                   <div className="flex items-center gap-3">
-                    <span className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${getStatusColor(currentProject.status)}`}>
-                      {currentProject.status || 'Open'}
+                    <span
+                      className={`inline-flex px-4 py-2 text-sm font-semibold rounded-full ${getStatusColor(
+                        currentProject.status
+                      )}`}
+                    >
+                      {currentProject.status || "Open"}
                     </span>
                     {currentProject.project_type && (
                       <span className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full">
@@ -609,7 +406,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {/* <Button
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={handleEditProject}
@@ -626,7 +423,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete
-                </Button> */}
+                </Button>
                 <Button variant="ghost" size="sm" onClick={onClose}>
                   X
                 </Button>
@@ -639,101 +436,137 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
             {/* Tab Navigation */}
             <div className="flex border-b border-gray-200 mt-6">
               <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'overview'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                onClick={() => setActiveTab("overview")}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "overview"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               >
                 Overview
               </button>
               <button
-                onClick={() => setActiveTab('tasks')}
-                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'tasks'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                onClick={() => setActiveTab("tasks")}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "tasks"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               >
                 Tasks & Phases
               </button>
               <button
-                onClick={() => setActiveTab('team')}
-                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'team'
-                  ? 'border-green-600 text-green-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                onClick={() => setActiveTab("team")}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                  activeTab === "team"
+                    ? "border-green-600 text-green-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               >
                 <Users className="h-4 w-4" />
                 Team ({(projectUsers?.length || 0) + 1})
               </button>
               {selectedPhase && (
                 <button
-                  onClick={() => setActiveTab('phase-details')}
-                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'phase-details'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                  onClick={() => setActiveTab("phase-details")}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                    activeTab === "phase-details"
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
                 >
                   📋 {selectedPhase.subject}
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedPhase(null);
-                      setActiveTab('tasks');
+                      setActiveTab("tasks");
                     }}
                     className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close phase details"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </span>
                 </button>
               )}
               {selectedTask && (
                 <button
-                  onClick={() => setActiveTab('task-details')}
-                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'task-details'
-                    ? 'border-orange-600 text-orange-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                  onClick={() => setActiveTab("task-details")}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                    activeTab === "task-details"
+                      ? "border-orange-600 text-orange-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
                 >
                   📝 {selectedTask.subject || selectedTask.name}
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedTask(null);
-                      setActiveTab('tasks');
+                      setActiveTab("tasks");
                     }}
                     className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close task details"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </span>
                 </button>
               )}
               {selectedSubTask && (
                 <button
-                  onClick={() => setActiveTab('subtask-details')}
-                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'subtask-details'
-                    ? 'border-purple-600 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                  onClick={() => setActiveTab("subtask-details")}
+                  className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                    activeTab === "subtask-details"
+                      ? "border-purple-600 text-purple-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
                 >
                   📌 {selectedSubTask.subject || selectedSubTask.name}
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedSubTask(null);
-                      setActiveTab('tasks');
+                      setActiveTab("tasks");
                     }}
                     className="ml-2 hover:bg-gray-200 rounded-full p-1 transition-colors cursor-pointer"
                     title="Close subtask details"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </span>
                 </button>
@@ -742,22 +575,28 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
           </DrawerHeader>
 
           <div className="space-y-8">
-            {activeTab === 'overview' && (
+            {activeTab === "overview" && (
               <>
                 {/* Progress Section */}
                 <div className="bg-white border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Project Progress</h3>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    Project Progress
+                  </h3>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-medium text-gray-700">Overall Progress</span>
+                        <span className="text-lg font-medium text-gray-700">
+                          Overall Progress
+                        </span>
                         <span className="text-xs text-gray-500">
                           {/* (from project.percent_complete) */}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-blue-600">{calculatedProgress.progress}%</span>
-                       </div>
+                        <span className="text-2xl font-bold text-blue-600">
+                          {calculatedProgress.progress}%
+                        </span>
+                      </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-4">
                       <div
@@ -765,7 +604,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                         style={{ width: `${calculatedProgress.progress}%` }}
                       ></div>
                     </div>
-                    </div>
+                  </div>
                 </div>
 
                 {/* Project Info Grid */}
@@ -776,8 +615,12 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                         <User className="h-8 w-8 text-blue-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-blue-600 uppercase tracking-wide">Customer</p>
-                        <p className="text-xl font-bold text-gray-900">{currentProject.customer || 'N/A'}</p>
+                        <p className="text-sm font-medium text-blue-600 uppercase tracking-wide">
+                          Customer
+                        </p>
+                        <p className="text-xl font-bold text-gray-900">
+                          {currentProject.customer || "N/A"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -788,8 +631,12 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                         <DollarSign className="h-8 w-8 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-green-600 uppercase tracking-wide">Budget</p>
-                        <p className="text-xl font-bold text-gray-900">{formatCurrency(currentProject.estimated_costing)}</p>
+                        <p className="text-sm font-medium text-green-600 uppercase tracking-wide">
+                          Budget
+                        </p>
+                        <p className="text-xl font-bold text-gray-900">
+                          {formatCurrency(currentProject.estimated_costing)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -800,8 +647,12 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                         <Calendar className="h-8 w-8 text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-purple-600 uppercase tracking-wide">Deadline</p>
-                        <p className="text-xl font-bold text-gray-900">{formatDate(currentProject.expected_end_date)}</p>
+                        <p className="text-sm font-medium text-purple-600 uppercase tracking-wide">
+                          Deadline
+                        </p>
+                        <p className="text-xl font-bold text-gray-900">
+                          {formatDate(currentProject.expected_end_date)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -810,45 +661,81 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                 {/* Project Details */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Project Information</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                      Project Information
+                    </h3>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Start Date</span>
-                        <span className="text-gray-900 font-semibold">{formatDate(currentProject.expected_start_date)}</span>
+                        <span className="text-gray-600 font-medium">
+                          Start Date
+                        </span>
+                        <span className="text-gray-900 font-semibold">
+                          {formatDate(currentProject.expected_start_date)}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Priority</span>
-                        <span className="text-gray-900 font-semibold">{currentProject.priority || 'Medium'}</span>
+                        <span className="text-gray-600 font-medium">
+                          Priority
+                        </span>
+                        <span className="text-gray-900 font-semibold">
+                          {currentProject.priority || "Medium"}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Department</span>
-                        <span className="text-gray-900 font-semibold">{currentProject.department || 'N/A'}</span>
+                        <span className="text-gray-600 font-medium">
+                          Department
+                        </span>
+                        <span className="text-gray-900 font-semibold">
+                          {currentProject.department || "N/A"}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between py-3">
-                        <span className="text-gray-600 font-medium">Company</span>
-                        <span className="text-gray-900 font-semibold">{currentProject.company || 'N/A'}</span>
+                        <span className="text-gray-600 font-medium">
+                          Company
+                        </span>
+                        <span className="text-gray-900 font-semibold">
+                          {currentProject.company || "N/A"}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6">Financial Metrics</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                      Financial Metrics
+                    </h3>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Total Cost</span>
-                        <span className="text-gray-900 font-semibold">{formatCurrency(currentProject.total_costing_amount)}</span>
+                        <span className="text-gray-600 font-medium">
+                          Total Cost
+                        </span>
+                        <span className="text-gray-900 font-semibold">
+                          {formatCurrency(currentProject.total_costing_amount)}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Total Sales</span>
-                        <span className="text-gray-900 font-semibold">{formatCurrency(currentProject.total_sales_amount)}</span>
+                        <span className="text-gray-600 font-medium">
+                          Total Sales
+                        </span>
+                        <span className="text-gray-900 font-semibold">
+                          {formatCurrency(currentProject.total_sales_amount)}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                        <span className="text-gray-600 font-medium">Billable Amount</span>
-                        <span className="text-gray-900 font-semibold">{formatCurrency(currentProject.total_billable_amount)}</span>
+                        <span className="text-gray-600 font-medium">
+                          Billable Amount
+                        </span>
+                        <span className="text-gray-900 font-semibold">
+                          {formatCurrency(currentProject.total_billable_amount)}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between py-3">
-                        <span className="text-gray-600 font-medium">Gross Margin</span>
-                        <span className="text-lg font-bold text-green-600">{formatCurrency(currentProject.gross_margin)}</span>
+                        <span className="text-gray-600 font-medium">
+                          Gross Margin
+                        </span>
+                        <span className="text-lg font-bold text-green-600">
+                          {formatCurrency(currentProject.gross_margin)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -866,21 +753,23 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
               </>
             )}
 
-            {activeTab === 'team' && (
+            {activeTab === "team" && (
               <div className="space-y-6">
                 {/* Project Owner Section */}
                 <div className="bg-white border border-gray-200 rounded-xl p-6">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <Crown className="h-6 w-6 text-yellow-600" />
-                      <h3 className="text-xl font-semibold text-gray-900">Project Owner</h3>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Project Owner
+                      </h3>
                     </div>
                     {isCurrentUserOwner() && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          editOwnerForm.reset({ owner: project?.owner || '' });
+                          editOwnerForm.reset({ owner: project?.owner || "" });
                           setShowEditOwnerDialog(true);
                         }}
                         className="flex items-center gap-2"
@@ -897,26 +786,22 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     </div>
                     <div className="flex-1">
                       <p className="text-lg font-semibold text-gray-900">
-                        {ownerLoading ? (
-                          "Loading..."
-                        ) : ownerData?.full_name ? (
-                          ownerData.full_name
-                        ) : currentProject?.owner ? (
-                          currentProject.owner
-                        ) : (
-                          'No Owner'
-                        )}
+                        {ownerLoading
+                          ? "Loading..."
+                          : ownerData?.full_name
+                          ? ownerData.full_name
+                          : currentProject?.owner
+                          ? currentProject.owner
+                          : "No Owner"}
                       </p>
                       <p className="text-sm text-gray-600">
-                        {ownerLoading ? (
-                          "Loading email..."
-                        ) : ownerData?.email ? (
-                          ownerData.email
-                        ) : currentProject?.owner ? (
-                          currentProject.owner
-                        ) : (
-                          'No email'
-                        )}
+                        {ownerLoading
+                          ? "Loading email..."
+                          : ownerData?.email
+                          ? ownerData.email
+                          : currentProject?.owner
+                          ? currentProject.owner
+                          : "No email"}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="inline-flex px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
@@ -942,7 +827,9 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <Users className="h-6 w-6 text-blue-600" />
-                      <h3 className="text-xl font-semibold text-gray-900">Team Members</h3>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Team Members
+                      </h3>
                       <span className="inline-flex px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full">
                         {projectUsers?.length || 0} members
                       </span>
@@ -960,7 +847,9 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   {loadingUsers ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                      <span className="ml-3 text-gray-600">Loading team members...</span>
+                      <span className="ml-3 text-gray-600">
+                        Loading team members...
+                      </span>
                     </div>
                   ) : projectUsers && projectUsers.length > 0 ? (
                     <div className="grid gap-4">
@@ -978,16 +867,20 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                               />
                             ) : (
                               <span className="text-sm font-semibold text-blue-600">
-                                {(member.full_name || member.user || 'U').charAt(0).toUpperCase()}
+                                {(member.full_name || member.user || "U")
+                                  .charAt(0)
+                                  .toUpperCase()}
                               </span>
                             )}
                           </div>
                           <div className="flex-1">
                             <p className="font-semibold text-gray-900">
-                              {member.full_name || member.user || 'Unknown User'}
+                              {member.full_name ||
+                                member.user ||
+                                "Unknown User"}
                             </p>
                             <p className="text-sm text-gray-600">
-                              {member.email || member.user || 'No email'}
+                              {member.email || member.user || "No email"}
                             </p>
                             {member.project_status && (
                               <p className="text-xs text-blue-600 mt-1">
@@ -1007,15 +900,6 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-xs"
-                              onClick={() => openEditMemberDialog(member)}
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
                               className="text-xs text-red-600 hover:text-red-700"
                               onClick={() => handleRemoveMember(member.user)}
                             >
@@ -1029,9 +913,16 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   ) : (
                     <div className="text-center py-8">
                       <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 text-lg font-medium">No team members added yet</p>
-                      <p className="text-gray-500 text-sm mt-2">Add team members to collaborate on this project</p>
-                      <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => setShowAddMemberDialog(true)}>
+                      <p className="text-gray-600 text-lg font-medium">
+                        No team members added yet
+                      </p>
+                      <p className="text-gray-500 text-sm mt-2">
+                        Add team members to collaborate on this project
+                      </p>
+                      <Button
+                        className="mt-4 bg-blue-600 hover:bg-blue-700"
+                        onClick={() => setShowAddMemberDialog(true)}
+                      >
                         <Plus className="h-4 w-4 mr-2" />
                         Add First Member
                       </Button>
@@ -1041,10 +932,14 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
 
                 {/* Project Statistics */}
                 <div className="bg-white border border-gray-200 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Statistics</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Team Statistics
+                  </h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600">{(projectUsers?.length || 0) + 1}</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {(projectUsers?.length || 0) + 1}
+                      </p>
                       <p className="text-sm text-gray-600">Total Members</p>
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
@@ -1052,11 +947,15 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                       <p className="text-sm text-gray-600">Project Owner</p>
                     </div>
                     <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <p className="text-2xl font-bold text-purple-600">{projectUsers?.length || 0}</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {projectUsers?.length || 0}
+                      </p>
                       <p className="text-sm text-gray-600">Team Members</p>
                     </div>
                     <div className="text-center p-4 bg-orange-50 rounded-lg">
-                      <p className="text-2xl font-bold text-orange-600">{project?.percent_complete || 0}%</p>
+                      <p className="text-2xl font-bold text-orange-600">
+                        {project?.percent_complete || 0}%
+                      </p>
                       <p className="text-sm text-gray-600">Progress</p>
                     </div>
                   </div>
@@ -1064,93 +963,82 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
               </div>
             )}
 
-            {activeTab === 'tasks' && (
+            {activeTab === "tasks" && (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <ProjectTaskManagement
                   projectName={project.name}
                   onViewPhaseDetails={(phase) => {
                     setSelectedPhase(phase);
-                    setActiveTab('phase-details');
+                    setActiveTab("phase-details");
                   }}
                   onViewTaskDetails={(task) => {
                     setSelectedTask(task);
-                    setActiveTab('task-details');
+                    setActiveTab("task-details");
                   }}
                   onViewSubTaskDetails={(subtask) => {
                     setSelectedSubTask(subtask);
-                    setActiveTab('subtask-details');
+                    setActiveTab("subtask-details");
                   }}
                 />
               </div>
             )}
 
-            {activeTab === 'phase-details' && selectedPhase && (
+            {activeTab === "phase-details" && selectedPhase && (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <PhaseDetails
                   phase={selectedPhase}
                   projectName={project.name}
-                  onBack={() => setActiveTab('tasks')}
+                  onBack={() => setActiveTab("tasks")}
                   onViewTaskDetails={(task) => {
                     setSelectedTask(task);
-                    setActiveTab('task-details');
+                    setActiveTab("task-details");
                   }}
                   onPhaseUpdated={async () => {
-                    // Refresh project data when phase is updated
                     refreshProject();
-                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
-                    // Also recalculate project progress
-                    // setTimeout(async () => {
-                    //   await handleRecalculateProgress();
-                    // }, 500);
                   }}
                   onPhaseDeleted={async () => {
-                    // Refresh project data and go back to tasks when phase is deleted
                     refreshProject();
-                    setActiveTab('tasks');
+                    setActiveTab("tasks");
                     setSelectedPhase(null);
-                    
                   }}
                   onTaskCreated={async () => {
-                    // Refresh project data when task is created
                     refreshProject();
-                    
                   }}
                 />
               </div>
             )}
-            {activeTab === 'task-details' && selectedTask && (
+            {activeTab === "task-details" && selectedTask && (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <TaskDetails
                   task={selectedTask}
                   projectName={project.name}
-                  onBack={() => setActiveTab('tasks')}
+                  onBack={() => setActiveTab("tasks")}
                   onViewSubTaskDetails={(subtask) => {
                     setSelectedSubTask(subtask);
-                    setActiveTab('subtask-details');
+                    setActiveTab("subtask-details");
                   }}
                   onTaskUpdated={async () => {
                     // Refresh project data when task is updated
                     refreshProject();
                     // Refresh task data to show updated information
                     await handleRefreshTask();
-                                      }}
+                  }}
                   onTaskDeleted={async () => {
                     // Refresh project data and go back to tasks when task is deleted
                     refreshProject();
-                    setActiveTab('tasks');
+                    setActiveTab("tasks");
                     setSelectedTask(null);
-                 
                   }}
                 />
               </div>
             )}
 
-            {activeTab === 'subtask-details' && selectedSubTask && (
+            {activeTab === "subtask-details" && selectedSubTask && (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <SubTaskDetails
                   subtask={selectedSubTask}
                   projectName={project.name}
-                  onBack={() => setActiveTab('tasks')}
+                  onBack={() => setActiveTab("tasks")}
                   onSubTaskUpdated={async () => {
                     // Refresh project data when subtask is updated
                     refreshProject();
@@ -1160,14 +1048,12 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     if (selectedSubTask?.task) {
                       await handleRefreshTaskByName(selectedSubTask.task);
                     }
-                   
                   }}
                   onSubTaskDeleted={async () => {
                     // Refresh project data and go back to tasks when subtask is deleted
                     refreshProject();
-                    setActiveTab('tasks');
+                    setActiveTab("tasks");
                     setSelectedSubTask(null);
-                   
                   }}
                 />
               </div>
@@ -1179,302 +1065,44 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
               <Button
                 variant="outline"
                 className="flex-1 h-12 text-lg font-semibold"
-                onClick={() => setActiveTab('tasks')}
+                onClick={() => setActiveTab("tasks")}
               >
                 View Tasks
               </Button>
-              <Button variant="outline" className="flex-1 h-12 text-lg font-semibold">
+              <Button
+                variant="outline"
+                className="flex-1 h-12 text-lg font-semibold"
+              >
                 View Timeline
               </Button>
             </div>
           </DrawerFooter>
         </div>
+        {/* Add Member Dialog */}
+        <AddTeamMemberDialog
+          isOpen={showAddMemberDialog}
+          onClose={() => setShowAddMemberDialog(false)}
+          projectName={project.name}
+          onSuccess={() => {
+            setTimeout(() => refreshProject(), 1000);
+          }}
+        />
+        {/* Edit Project Dialog */}
+        <EditProject
+          project={project}
+          isOpen={showEditProjectDialog}
+          onClose={() => setShowEditProjectDialog(false)}
+          onSuccess={handleEditSuccess}
+        />
+
+        {/* Delete Project Dialog */}
+        <DeleteProject
+          project={project}
+          isOpen={showDeleteProjectDialog}
+          onClose={() => setShowDeleteProjectDialog(false)}
+          onSuccess={handleDeleteSuccess}
+        />
       </DrawerContent>
-
-      {/* Add Member Dialog */}
-      <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
-        <DialogContent className="sm:max-w-md">
-          <form 
-            onSubmit={addMemberForm.handleSubmit(handleAddMember)}
-            onKeyDown={(e) => {
-              // Prevent form submission on Enter key to avoid double submission
-              if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
-                e.preventDefault();
-              }
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>Add Team Member</DialogTitle>
-              <DialogDescription>
-                Add a new member to the project team.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>User <span className="text-red-500">*</span></Label>
-                <Controller
-                  name="user"
-                  control={addMemberForm.control}
-                  rules={{ required: "Please select a user" }}
-                  render={({ field }) => (
-                    <Combobox
-                      key={`add-member-${showAddMemberDialog}`} // Force re-render when dialog opens
-                      doctype="User"
-                      value={field.value || ""}
-                      onChange={(value) => {
-                        field.onChange(value);
-                        // Clear any previous errors when user selects a value
-                        if (value && addMemberForm.formState.errors.user) {
-                          addMemberForm.clearErrors("user");
-                        }
-                      }}
-                      placeholder={updatingProject ? "Please wait..." : "Select user..."}
-                      displayField="full_name"
-                      valueField="name"
-                      filters={[["enabled", "=", 1], ["user_type", "!=", "Website User"]]}
-                      fields={["name", "full_name", "email", "user_image"]}
-                      className="w-full"
-                      disabled={updatingProject}
-                    />
-                  )}
-                />
-                {addMemberForm.formState.errors.user && (
-                  <span className="text-red-500 text-sm">
-                    {addMemberForm.formState.errors.user.message}
-                  </span>
-                )}
-              </div>
-
-              {/* Optional: Add project status field */}
-              <div className="grid gap-2">
-                <Label>Project Status (Optional)</Label>
-                <Input
-                  {...addMemberForm.register("project_status")}
-                  placeholder="e.g., Team Member, Developer, Designer..."
-                  disabled={updatingProject}
-                />
-              </div>
-
-              {/* Optional: Add permission checkboxes */}
-              <div className="space-y-3 pt-2 border-t">
-                <Label className="text-sm font-medium">Permissions</Label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="add_view_attachments"
-                    {...addMemberForm.register("view_attachments")}
-                    defaultChecked={true}
-                    disabled={updatingProject}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="add_view_attachments" className="text-sm">
-                    Can view attachments
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="add_hide_timesheets"
-                    {...addMemberForm.register("hide_timesheets")}
-                    disabled={updatingProject}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="add_hide_timesheets" className="text-sm">
-                    Hide timesheets from this user
-                  </Label>
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeAddMemberDialog}
-                disabled={updatingProject}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={updatingProject || !addMemberForm.watch('user')}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-              >
-                {updatingProject ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Adding...
-                  </>
-                ) : (
-                  "Add Member"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Member Dialog */}
-      <Dialog open={showEditMemberDialog} onOpenChange={setShowEditMemberDialog}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={editMemberForm.handleSubmit(handleEditMember)}>
-            <DialogHeader>
-              <DialogTitle>Edit Team Member</DialogTitle>
-              <DialogDescription>
-                Update member settings for {editingMember?.full_name || editingMember?.user}.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>User</Label>
-                <Input
-                  value={editingMember?.full_name || editingMember?.user || ""}
-                  disabled
-                  className="bg-gray-100"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Project Status</Label>
-                <Input
-                  {...editMemberForm.register("project_status")}
-                  placeholder="Enter project status for this member..."
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="edit_view_attachments"
-                  {...editMemberForm.register("view_attachments")}
-                  className="rounded border-gray-300"
-                />
-                <Label htmlFor="edit_view_attachments" className="text-sm">
-                  Can view attachments
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="edit_hide_timesheets"
-                  {...editMemberForm.register("hide_timesheets")}
-                  className="rounded border-gray-300"
-                />
-                <Label htmlFor="edit_hide_timesheets" className="text-sm">
-                  Hide timesheets from this user
-                </Label>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeEditMemberDialog}
-                disabled={updatingProject}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={updatingProject}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {updatingProject ? "Updating..." : "Update Member"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Owner Dialog */}
-      <Dialog open={showEditOwnerDialog} onOpenChange={setShowEditOwnerDialog}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={editOwnerForm.handleSubmit(handleEditOwner)}>
-            <DialogHeader>
-              <DialogTitle>Change Project Owner</DialogTitle>
-              <DialogDescription>
-                Attempt to change the project owner. Note: ERPNext may protect this field, in which case we'll add the user as Project Manager instead.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>New Owner <span className="text-red-500">*</span></Label>
-                <Controller
-                  name="owner"
-                  control={editOwnerForm.control}
-                  rules={{ required: "Please select a new owner" }}
-                  render={({ field }) => (
-                    <Combobox
-                      key={`edit-owner-${showEditOwnerDialog}`} // Force re-render when dialog opens
-                      doctype="User"
-                      value={field.value || ""}
-                      onChange={field.onChange}
-                      placeholder={updatingProject ? "Please wait..." : "Select new owner..."}
-                      displayField="full_name"
-                      valueField="name"
-                      filters={[["enabled", "=", 1], ["user_type", "!=", "Website User"]]}
-                      fields={["name", "full_name", "email", "user_image"]}
-                      className="w-full"
-                      disabled={updatingProject}
-                    />
-                  )}
-                />
-                {editOwnerForm.formState.errors.owner && (
-                  <span className="text-red-500 text-sm">
-                    {editOwnerForm.formState.errors.owner.message}
-                  </span>
-                )}
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> This will attempt to change the actual project owner. If that fails (due to ERPNext protection), the user will be added as "Project Manager (Owner Substitute)" with full permissions.
-                </p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeEditOwnerDialog}
-                disabled={updatingProject}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={updatingProject}
-                className="bg-yellow-600 hover:bg-yellow-700"
-              >
-                {updatingProject ? "Changing Owner..." : "Change Owner"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Project Dialog */}
-      <EditProject
-        project={project}
-        isOpen={showEditProjectDialog}
-        onClose={() => setShowEditProjectDialog(false)}
-        onSuccess={handleEditSuccess}
-      />
-
-      {/* Delete Project Dialog */}
-      <DeleteProject
-        project={project}
-        isOpen={showDeleteProjectDialog}
-        onClose={() => setShowDeleteProjectDialog(false)}
-        onSuccess={handleDeleteSuccess}
-      />
     </Drawer>
-  )
+  );
 }
