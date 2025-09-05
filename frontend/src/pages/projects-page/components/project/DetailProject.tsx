@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Calendar, DollarSign, User, Users, Crown, Plus, Edit, Trash2, RefreshCw } from "lucide-react"
+import { Calendar, DollarSign, User, Users, Crown, Plus, Edit, Trash2 } from "lucide-react"
 import { useFrappeGetDoc, useFrappePostCall, useFrappeAuth, useFrappeGetDocList } from "frappe-react-sdk"
 import { useForm, Controller } from "react-hook-form"
 import { mutate } from 'swr'
@@ -24,6 +24,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { FileAttachments } from "@/components/FileAttachments"
 import type { Project } from '@/types/Projects/Project'
 import type { ProjectUser } from '@/types/Projects/ProjectUser'
 import { formatCurrency } from '@/utils/formatCurrency'
@@ -33,8 +34,7 @@ import { TaskDetails } from '../task/TaskDetails'
 import { SubTaskDetails } from '../subtask/SubTaskDetails'
 import EditProject from './EditProject'
 import DeleteProject from './DeleteProject'
-import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate'
-import { CreateStandaloneTask } from '../task'
+// import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate'
 
 interface DetailProjectProps {
   project: Project | null
@@ -70,10 +70,52 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   // Edit and Delete project states
   const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
   const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
-  const [isCalculatingProgress, setIsCalculatingProgress] = useState(false);
 
-  // Hook for project progress calculation
-  const { updateProjectProgress } = useProjectProgressUpdate();
+  // Loading state for operations
+  const [updatingProject, setUpdatingProject] = useState(false);
+
+  // Reset states when dialog closes or project changes
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset all states when modal closes
+      setActiveTab('overview');
+      setSelectedPhase(null);
+      setSelectedTask(null);
+      setSelectedSubTask(null);
+      setShowAddMemberDialog(false);
+      setEditingMember(null);
+      setShowEditMemberDialog(false);
+      setShowEditOwnerDialog(false);
+      setShowEditProjectDialog(false);
+      setShowDeleteProjectDialog(false);
+      setUpdatingProject(false);
+    }
+  }, [isOpen]);
+
+  // Reset form states when add member dialog closes
+  useEffect(() => {
+    if (!showAddMemberDialog) {
+      addMemberForm.reset();
+      addMemberForm.clearErrors();
+    }
+  }, [showAddMemberDialog]);
+
+  // Reset form states when edit member dialog closes
+  useEffect(() => {
+    if (!showEditMemberDialog) {
+      editMemberForm.reset();
+      editMemberForm.clearErrors();
+      setEditingMember(null);
+    }
+  }, [showEditMemberDialog]);
+
+  // Reset form states when edit owner dialog closes
+  useEffect(() => {
+    if (!showEditOwnerDialog) {
+      editOwnerForm.reset();
+      editOwnerForm.clearErrors();
+    }
+  }, [showEditOwnerDialog]);
 
   // Fetch complete project data with users field
   const { data: fullProjectData, isLoading: loadingProject, mutate: refreshProject } = useFrappeGetDoc(
@@ -82,62 +124,6 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     project?.name ? "Project" : undefined
   );
 
-  // Fetch phases for progress calculation with tasks field
-  const { data: projectPhasesList, mutate: mutatePhasesList } = useFrappeGetDocList('project_phase', {
-    fields: ['name', 'progress'],
-    filters: [['project', '=', project?.name || '']],
-    orderBy: { field: 'creation', order: 'asc' },
-    limit: 0 // Get all phases
-  });
-
-  // Fetch individual phase documents to get child table data (same as ProjectTaskManagement)
-  const [projectPhases, setProjectPhases] = useState<any[]>([]);
-  
-  useEffect(() => {
-    if (projectPhasesList && projectPhasesList.length > 0) {
-      const fetchPhasesWithTasks = async () => {
-        const results = [];
-        for (const phase of projectPhasesList) {
-          try {
-            // Use frappe.client.get to get full document with child tables
-            const response = await fetch(`/api/resource/project_phase/${phase.name}`, {
-              headers: {
-                'Accept': 'application/json',
-                'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
-              },
-              credentials: 'include'
-            });
-            
-            if (response.ok) {
-              const phaseDoc = await response.json();
-              results.push(phaseDoc.data);
-            } else {
-              console.warn('Failed to fetch phase:', phase.name);
-              // Fallback to the basic phase data
-              results.push(phase);
-            }
-          } catch (error) {
-            console.error('Error fetching phase:', phase.name, error);
-            // Fallback to the basic phase data
-            results.push(phase);
-          }
-        }
-        setProjectPhases(results);
-      };
-      
-      fetchPhasesWithTasks();
-    } else {
-      setProjectPhases([]);
-    }
-  }, [projectPhasesList?.length, projectPhasesList?.map(p => `${p.name}-${p.progress}`).join(',')]);  // Include progress in dependencies
-
-  // Fetch all tasks for progress calculation
-  const { data: projectTasks, mutate: mutateProjectTasks } = useFrappeGetDocList('Task', {
-    fields: ['name', 'progress', 'subject'],
-    filters: [['project', '=', project?.name || '']],
-    orderBy: { field: 'creation', order: 'asc' },
-    limit: 0 // Get all tasks
-  });
 
   const { call: insertCall } = useFrappePostCall('frappe.client.insert');
   const { call: saveCall } = useFrappePostCall('frappe.client.save');
@@ -172,132 +158,14 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
   const projectUsers = fullProjectData?.users || project?.users || [];
   const loadingUsers = loadingProject;
 
-  // Calculate project progress based on Phase Progress + Standalone Task Progress
+  // NEW APPROACH: Display project progress directly from project.percent_complete
   const calculatedProgress = useMemo(() => {
-   
-    if (projectTasks && projectTasks.length > 0) {
-      // Filter standalone tasks using the exact same logic as ProjectTaskManagement
-      const standaloneTasks = projectTasks.filter((task: any) => {
-        if (!projectPhases || projectPhases.length === 0) {
-          return true; // All tasks are standalone if no phases
-        }
-        
-        const isInPhase = projectPhases.some((phase: any) => 
-          phase.tasks?.some((phaseTask: any) => phaseTask.task === task.name)
-        );
-        return !isInPhase; // Return tasks NOT in any phase
-      });
-           
-      // Debug: Show which tasks are in phases
-      if (projectPhases && projectPhases.length > 0) {
-        const tasksInPhases: string[] = [];
-        projectPhases.forEach((phase: any) => {
-          if (phase.tasks && phase.tasks.length > 0) {
-            phase.tasks.forEach((phaseTask: any) => {
-              if (phaseTask.task) {
-                tasksInPhases.push(phaseTask.task);
-              }
-            });
-          }
-        });
-      }
-      
-      // Calculate progress: Phase Progress + Standalone Task Progress
-      let totalProgress = 0;
-      let totalComponents = 0;
-      
-      // Add Phase Progress (each phase counts as 1 component)
-      if (projectPhases && projectPhases.length > 0) {
-        projectPhases.forEach((phase: any) => {
-          const phaseProgress = phase.progress || 0;
-          totalProgress += phaseProgress;
-          totalComponents += 1;
-        });
-      }
-      
-      // Add Standalone Task Progress (each standalone task counts as 1 component)
-      if (standaloneTasks.length > 0) {
-        standaloneTasks.forEach((task: any) => {
-          const taskProgress = task.progress || 0;
-          totalProgress += taskProgress;
-          totalComponents += 1;
-        });
-      }
-      
-      const finalProgress = totalComponents > 0 ? Math.round(totalProgress / totalComponents) : 0;
-      
-      // Calculate phase task names for display purposes
-      let phaseTaskNames: string[] = [];
-      if (projectPhases && projectPhases.length > 0) {
-        projectPhases.forEach((phase: any) => {
-          if (phase.tasks && phase.tasks.length > 0) {
-            phase.tasks.forEach((phaseTask: any) => {
-              if (phaseTask.task) {
-                phaseTaskNames.push(phaseTask.task);
-              }
-            });
-          }
-        });
-      }
-      
-      return {
-        progress: finalProgress,
-        source: 'mixed', // Phase + Standalone
-        count: totalComponents,
-        phases: projectPhases || [],
-        phaseTasksCount: phaseTaskNames.length,
-        standaloneTasksCount: standaloneTasks.length,
-        phaseTaskNames,
-        standaloneTasks
-      };
-    }
-    
-    // Fallback to manual progress if no tasks
     return {
       progress: fullProjectData?.percent_complete || project?.percent_complete || 0,
-      source: 'manual',
-      count: 0,
-      phases: [],
-      phaseTasksCount: 0,
-      standaloneTasksCount: 0,
-      phaseTaskNames: [],
-      standaloneTasks: []
+      source: 'project',
+      count: 1
     };
-  }, [projectPhases, projectTasks, fullProjectData?.percent_complete, project?.percent_complete, 
-      // Add more specific dependencies
-      projectPhases?.map(p => p.progress).join(','),
-      projectTasks?.map(t => t.progress).join(','),
-      projectPhases?.length,
-      projectTasks?.length
-    ]);
-
-  // Function to manually recalculate progress
-  const handleRecalculateProgress = async () => {
-    if (!project?.name) return;
-    setIsCalculatingProgress(true);
-    try {
-      // First refresh all data
-      await Promise.all([
-        mutatePhasesList(),
-        mutateProjectTasks(),
-        refreshProject()
-      ]);
-      
-      // Wait a bit for data to settle
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Then update progress
-      const result = await updateProjectProgress(project.name);
-      
-      // Final refresh of project data
-      await refreshProject();
-      
-    } catch (error) {
-      console.error('Error recalculating project progress:', error);
-    } finally {
-      setIsCalculatingProgress(false);
-    }
-  };
+  }, [fullProjectData?.percent_complete, project?.percent_complete]);
 
   // Function to refresh subtask data after update
   const handleRefreshSubTask = async () => {
@@ -328,19 +196,6 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     }
   };
 
-  // Function to force refresh all project data
-  const forceRefreshAllData = async () => {
-    try {
-      await Promise.all([
-        mutatePhasesList(),
-        mutateProjectTasks(),
-        refreshProject()
-      ]);
-    } catch (error) {
-      console.error('Error in force refresh:', error);
-    }
-  };
-
   // Auto-update selectedSubTask when subtaskData changes
   useEffect(() => {
     if (subtaskData && selectedSubTask?.name === subtaskData.name) {
@@ -355,43 +210,55 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
     }
   }, [taskData, selectedTask?.name]);
 
-  // Auto-update project progress when phases or tasks change
-  useEffect(() => {
-    if (calculatedProgress.source !== 'manual' && project?.name && fullProjectData) {
-      const currentDbProgress = fullProjectData?.percent_complete || project?.percent_complete || 0;
-      if (Math.abs(calculatedProgress.progress - currentDbProgress) > 1) {
-        // Only update if there's a significant difference (more than 1%)
-        handleRecalculateProgress();
-      }
-    }
-  }, [calculatedProgress.progress, projectPhases?.length, projectTasks?.length, fullProjectData?.percent_complete]);
-
-  // Add a polling mechanism to keep data fresh
-  useEffect(() => {
-    if (!project?.name) return;
-    
-    const pollInterval = setInterval(() => {
-      refreshProject();
-      mutatePhasesList();
-      mutateProjectTasks();
-    }, 10000); // Poll every 10 seconds
-    
-    return () => clearInterval(pollInterval);
-  }, [project?.name, refreshProject, mutatePhasesList, mutateProjectTasks]);
-
   // Form hooks for member management
   const addMemberForm = useForm<MemberFormData>();
   const editMemberForm = useForm<MemberFormData>();
   const editOwnerForm = useForm<OwnerFormData>();
 
-  // Loading state for operations
-  const [updatingProject, setUpdatingProject] = useState(false);
+  // Helper function to safely close add member dialog
+  const closeAddMemberDialog = () => {
+    if (!updatingProject) {
+      setShowAddMemberDialog(false);
+      // Reset form data after a small delay to prevent flash
+      setTimeout(() => {
+        addMemberForm.reset();
+        addMemberForm.clearErrors();
+      }, 100);
+    }
+  };
+
+  // Helper function to safely close edit member dialog  
+  const closeEditMemberDialog = () => {
+    if (!updatingProject) {
+      setShowEditMemberDialog(false);
+      setEditingMember(null);
+      setTimeout(() => {
+        editMemberForm.reset();
+        editMemberForm.clearErrors();
+      }, 100);
+    }
+  };
+
+  // Helper function to safely close edit owner dialog
+  const closeEditOwnerDialog = () => {
+    if (!updatingProject) {
+      setShowEditOwnerDialog(false);
+      setTimeout(() => {
+        editOwnerForm.reset();
+        editOwnerForm.clearErrors();
+      }, 100);
+    }
+  };
 
   // Functions for member management
   const handleAddMember = async (data: MemberFormData) => {
     if (!project?.name) return;
 
+    // Prevent double submission
+    if (updatingProject) return;
+
     setUpdatingProject(true);
+    
     try {
       const currentUsers = projectUsers || [];
 
@@ -402,39 +269,81 @@ export function DetailProject({ project, isOpen, onClose }: DetailProjectProps) 
         return;
       }
 
+      // Prepare member data with defaults
+      const memberData = {
+        doctype: 'Project User',
+        parent: project.name,
+        parenttype: 'Project',
+        parentfield: 'users',
+        user: data.user,
+        view_attachments: data.view_attachments ? 1 : 0,
+        hide_timesheets: data.hide_timesheets ? 1 : 0,
+        project_status: data.project_status || 'Team Member',
+        welcome_email_sent: 1, // Flag to skip email
+      };
+
       // Use direct API call to add child table row  
       await insertCall({
-        doc: {
-          doctype: 'Project User',
-          parent: project.name,
-          parenttype: 'Project',
-          parentfield: 'users',
-          user: data.user,
-          view_attachments: 1,
-          hide_timesheets: 0,
-          project_status: 'Open',
-          welcome_email_sent: 1, // Flag to skip email
-        }
+        doc: memberData
       });
 
-      // Refresh data and close dialog
-      setTimeout(() => refreshProject(), 1000);
+      // Success handling
+      console.log('Member added successfully');
+      
+      // Close dialog immediately and reset form
       setShowAddMemberDialog(false);
-      addMemberForm.reset();
+      
+      // Reset form in next tick to prevent UI flash
+      setTimeout(() => {
+        addMemberForm.reset();
+        addMemberForm.clearErrors();
+      }, 0);
+
+      // Refresh data after a short delay to ensure backend processing is complete
+      setTimeout(() => {
+        refreshProject();
+      }, 1000);
+
+      // Show success message (avoid alert in production, use toast instead)
+      console.log('Member added successfully!');
+
     } catch (error) {
       console.error('Error adding member:', error);
 
-      // Check if it's email error
+      // Handle different types of errors
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('Email Account') || errorMessage.includes('OutgoingEmailError') || errorMessage.includes('email')) {
+      
+      if (errorMessage.includes('Email Account') || 
+          errorMessage.includes('OutgoingEmailError') || 
+          errorMessage.includes('email') ||
+          errorMessage.includes('SMTP')) {
         // Email error - member might still be added, just email failed
-        alert('Member may have been added, but welcome email failed. Please check the project members list and refresh if needed.');
-        // Refresh data to see if member was actually added
-        setTimeout(() => refreshProject(), 1000);
+        console.log('Email error detected, checking if member was added anyway');
+        
+        // Close dialog and refresh to check
         setShowAddMemberDialog(false);
         addMemberForm.reset();
+        addMemberForm.clearErrors();
+        
+        setTimeout(() => {
+          refreshProject();
+          alert('Member added successfully! (Welcome email failed to send, but member was added to project)');
+        }, 1000);
+        
+      } else if (errorMessage.includes('DuplicateEntryError') || 
+                 errorMessage.includes('already exists')) {
+        alert('This user is already a member of the project');
+        
+      } else if (errorMessage.includes('PermissionError') || 
+                 errorMessage.includes('Not permitted')) {
+        alert('You do not have permission to add members to this project');
+        
+      } else if (errorMessage.includes('ValidationError')) {
+        alert('Invalid data provided. Please check your input and try again.');
+        
       } else {
-        alert('Failed to add member: ' + errorMessage);
+        // Generic error
+        alert(`Failed to add member: ${errorMessage}`);
       }
     } finally {
       setUpdatingProject(false);
@@ -639,6 +548,8 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString()
   }
+
+  // Handle edit project
   const handleEditProject = () => {
     setShowEditProjectDialog(true);
   };
@@ -698,7 +609,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={handleEditProject}
@@ -715,7 +626,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete
-                </Button>
+                </Button> */}
                 <Button variant="ghost" size="sm" onClick={onClose}>
                   X
                 </Button>
@@ -840,25 +751,13 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-medium text-gray-700">Overall Progress</span>
-                        {calculatedProgress.source === 'manual' && (
-                          <span className="text-xs text-gray-500">
-                            (manual)
-                          </span>
-                        )}
+                        <span className="text-xs text-gray-500">
+                          {/* (from project.percent_complete) */}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-2xl font-bold text-blue-600">{calculatedProgress.progress}%</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleRecalculateProgress}
-                          disabled={isCalculatingProgress}
-                          className="h-8 w-8 p-0"
-                          title="Recalculate progress"
-                        >
-                          <RefreshCw className={`h-4 w-4 ${isCalculatingProgress ? 'animate-spin' : ''}`} />
-                        </Button>
-                      </div>
+                       </div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-4">
                       <div
@@ -866,41 +765,7 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                         style={{ width: `${calculatedProgress.progress}%` }}
                       ></div>
                     </div>
-                    {calculatedProgress.source === 'mixed' && calculatedProgress.count > 0 && (
-                      <div className="mt-3 text-xs text-gray-500 space-y-2">
-                        {/* Phase Progress Breakdown */}
-                        {calculatedProgress.phases && calculatedProgress.phases.length > 0 && (
-                          <div>
-                            <div className="font-medium mb-1">Phase Progress Breakdown:</div>
-                            <div className="grid grid-cols-2 gap-1">
-                              {calculatedProgress.phases.map((phase: any, index: number) => (
-                                <div key={phase.name} className="flex justify-between">
-                                  <span>Phase {index + 1}:</span>
-                                  <span>{phase.progress || 0}%</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Standalone Tasks Summary */}
-                        {calculatedProgress.standaloneTasksCount > 0 && (
-                          <div className="mt-2">
-                            <div className="font-medium mb-1">Standalone Tasks:</div>
-                            <div className="flex justify-between">
-                              <span>{calculatedProgress.standaloneTasksCount} tasks not in any phase</span>
-                            </div>
-                          </div>
-                        )}
-
-                      </div>
-                    )}
-                    {calculatedProgress.source === 'manual' && (
-                      <div className="mt-3 text-xs text-gray-500">
-                        Progress set manually (no tasks found)
-                      </div>
-                    )}
-                  </div>
+                    </div>
                 </div>
 
                 {/* Project Info Grid */}
@@ -988,6 +853,16 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     </div>
                   </div>
                 </div>
+
+                {/* Project Files Section */}
+                <FileAttachments
+                  doctype="Project"
+                  docname={project.name}
+                  title="Project Files"
+                  allowUpload={true}
+                  allowDelete={true}
+                  className="mt-8"
+                />
               </>
             )}
 
@@ -1220,35 +1095,29 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     setActiveTab('task-details');
                   }}
                   onPhaseUpdated={async () => {
-                    // Force refresh all data when phase is updated
-                    await forceRefreshAllData();
+                    // Refresh project data when phase is updated
+                    refreshProject();
+                    // COMMENTED OUT - OLD AUTO RECALCULATE PROGRESS
                     // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                    // setTimeout(async () => {
+                    //   await handleRecalculateProgress();
+                    // }, 500);
                   }}
                   onPhaseDeleted={async () => {
-                    // Force refresh all data when phase is deleted
-                    await forceRefreshAllData();
+                    // Refresh project data and go back to tasks when phase is deleted
+                    refreshProject();
                     setActiveTab('tasks');
                     setSelectedPhase(null);
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                    
                   }}
                   onTaskCreated={async () => {
-                    // Force refresh all data when task is created
-                    await forceRefreshAllData();
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                    // Refresh project data when task is created
+                    refreshProject();
+                    
                   }}
                 />
               </div>
             )}
-
             {activeTab === 'task-details' && selectedTask && (
               <div className="bg-white border border-gray-200 rounded-xl p-6">
                 <TaskDetails
@@ -1260,24 +1129,17 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                     setActiveTab('subtask-details');
                   }}
                   onTaskUpdated={async () => {
-                    // Force refresh all data when task is updated
-                    await forceRefreshAllData();
+                    // Refresh project data when task is updated
+                    refreshProject();
                     // Refresh task data to show updated information
                     await handleRefreshTask();
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
-                  }}
+                                      }}
                   onTaskDeleted={async () => {
-                    // Force refresh all data when task is deleted
-                    await forceRefreshAllData();
+                    // Refresh project data and go back to tasks when task is deleted
+                    refreshProject();
                     setActiveTab('tasks');
                     setSelectedTask(null);
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                 
                   }}
                 />
               </div>
@@ -1290,28 +1152,22 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   projectName={project.name}
                   onBack={() => setActiveTab('tasks')}
                   onSubTaskUpdated={async () => {
-                    // Force refresh all data when subtask is updated
-                    await forceRefreshAllData();
+                    // Refresh project data when subtask is updated
+                    refreshProject();
                     // Refresh subtask data to show updated information
                     await handleRefreshSubTask();
                     // Refresh parent task data to update task progress
                     if (selectedSubTask?.task) {
                       await handleRefreshTaskByName(selectedSubTask.task);
                     }
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                   
                   }}
                   onSubTaskDeleted={async () => {
-                    // Force refresh all data when subtask is deleted
-                    await forceRefreshAllData();
+                    // Refresh project data and go back to tasks when subtask is deleted
+                    refreshProject();
                     setActiveTab('tasks');
                     setSelectedSubTask(null);
-                    // Also recalculate project progress
-                    setTimeout(async () => {
-                      await handleRecalculateProgress();
-                    }, 1000);
+                   
                   }}
                 />
               </div>
@@ -1338,7 +1194,15 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
       {/* Add Member Dialog */}
       <Dialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog}>
         <DialogContent className="sm:max-w-md">
-          <form onSubmit={addMemberForm.handleSubmit(handleAddMember)}>
+          <form 
+            onSubmit={addMemberForm.handleSubmit(handleAddMember)}
+            onKeyDown={(e) => {
+              // Prevent form submission on Enter key to avoid double submission
+              if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+                e.preventDefault();
+              }
+            }}
+          >
             <DialogHeader>
               <DialogTitle>Add Team Member</DialogTitle>
               <DialogDescription>
@@ -1355,15 +1219,23 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   rules={{ required: "Please select a user" }}
                   render={({ field }) => (
                     <Combobox
+                      key={`add-member-${showAddMemberDialog}`} // Force re-render when dialog opens
                       doctype="User"
                       value={field.value || ""}
-                      onChange={field.onChange}
-                      placeholder="Select user..."
+                      onChange={(value) => {
+                        field.onChange(value);
+                        // Clear any previous errors when user selects a value
+                        if (value && addMemberForm.formState.errors.user) {
+                          addMemberForm.clearErrors("user");
+                        }
+                      }}
+                      placeholder={updatingProject ? "Please wait..." : "Select user..."}
                       displayField="full_name"
                       valueField="name"
                       filters={[["enabled", "=", 1], ["user_type", "!=", "Website User"]]}
-                      fields={["name", "full_name", "email"]}
+                      fields={["name", "full_name", "email", "user_image"]}
                       className="w-full"
+                      disabled={updatingProject}
                     />
                   )}
                 />
@@ -1373,25 +1245,71 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   </span>
                 )}
               </div>
+
+              {/* Optional: Add project status field */}
+              <div className="grid gap-2">
+                <Label>Project Status (Optional)</Label>
+                <Input
+                  {...addMemberForm.register("project_status")}
+                  placeholder="e.g., Team Member, Developer, Designer..."
+                  disabled={updatingProject}
+                />
+              </div>
+
+              {/* Optional: Add permission checkboxes */}
+              <div className="space-y-3 pt-2 border-t">
+                <Label className="text-sm font-medium">Permissions</Label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="add_view_attachments"
+                    {...addMemberForm.register("view_attachments")}
+                    defaultChecked={true}
+                    disabled={updatingProject}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="add_view_attachments" className="text-sm">
+                    Can view attachments
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="add_hide_timesheets"
+                    {...addMemberForm.register("hide_timesheets")}
+                    disabled={updatingProject}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="add_hide_timesheets" className="text-sm">
+                    Hide timesheets from this user
+                  </Label>
+                </div>
+              </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setShowAddMemberDialog(false);
-                  addMemberForm.reset();
-                }}
+                onClick={closeAddMemberDialog}
+                disabled={updatingProject}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={updatingProject}
-                className="bg-blue-600 hover:bg-blue-700"
+                disabled={updatingProject || !addMemberForm.watch('user')}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
               >
-                {updatingProject ? "Adding..." : "Add Member"}
+                {updatingProject ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Adding...
+                  </>
+                ) : (
+                  "Add Member"
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -1456,11 +1374,8 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setShowEditMemberDialog(false);
-                  setEditingMember(null);
-                  editMemberForm.reset();
-                }}
+                onClick={closeEditMemberDialog}
+                disabled={updatingProject}
               >
                 Cancel
               </Button>
@@ -1496,15 +1411,17 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
                   rules={{ required: "Please select a new owner" }}
                   render={({ field }) => (
                     <Combobox
+                      key={`edit-owner-${showEditOwnerDialog}`} // Force re-render when dialog opens
                       doctype="User"
                       value={field.value || ""}
                       onChange={field.onChange}
-                      placeholder="Select new owner..."
+                      placeholder={updatingProject ? "Please wait..." : "Select new owner..."}
                       displayField="full_name"
                       valueField="name"
                       filters={[["enabled", "=", 1], ["user_type", "!=", "Website User"]]}
-                      fields={["name", "full_name", "email"]}
+                      fields={["name", "full_name", "email", "user_image"]}
                       className="w-full"
+                      disabled={updatingProject}
                     />
                   )}
                 />
@@ -1526,10 +1443,8 @@ frappe.db.sql("UPDATE tabProject SET owner = '${data.owner}' WHERE name = '${pro
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setShowEditOwnerDialog(false);
-                  editOwnerForm.reset();
-                }}
+                onClick={closeEditOwnerDialog}
+                disabled={updatingProject}
               >
                 Cancel
               </Button>
