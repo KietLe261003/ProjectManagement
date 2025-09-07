@@ -683,10 +683,10 @@ export function DetailProject({
                       </div>
                       <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-gray-600 font-medium">
-                          Department
+                          Team
                         </span>
                         <span className="text-gray-900 font-semibold">
-                          {currentProject.department || "N/A"}
+                          {currentProject.team || "N/A"}
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-3">
