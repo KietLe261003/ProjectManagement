@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useFrappeGetDocList } from 'frappe-react-sdk';
-import { CheckCircle2, Circle, AlertCircle, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateProjectPhase } from './phase/CreateProjectPhase';
 import { CreateStandaloneTask } from './task';
 import type { SubTask } from '@/types/Todo/SubTask';
+import { usePhaseProgressAutoUpdate } from '@/hooks/usePhaseProgressAutoUpdate';
 
 interface ProjectTaskManagementProps {
   projectName: string;
@@ -37,6 +38,12 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     filters: [['project', '=', projectName]],
     orderBy: { field: 'start_date', order: 'asc' },
     limit: 0 // Get all phases
+  });
+
+  // Use auto-update hook for realtime phase progress updates
+  usePhaseProgressAutoUpdate(projectName, () => {
+    console.log('Phase progress updated, refreshing UI...');
+    mutatePhases();
   });
 
   // Fetch individual phase documents to get child table data
@@ -90,7 +97,7 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   const taskNames = tasks?.map((task: any) => task.name) || [];
 
   // Fetch all subtasks for tasks in this project
-  const { data: subtasks, isLoading: subtasksLoading } = useFrappeGetDocList('SubTask', {
+  const { data: subtasks, isLoading: subtasksLoading, mutate: mutateSubtasks } = useFrappeGetDocList('SubTask', {
     fields: ['name', 'subject', 'task', 'status', 'progress', 'start_date', 'end_date', 'description'],
     filters: taskNames.length > 0 ? [['task', 'in', taskNames]] : [['task', '=', 'dummy-non-existent-task']],
     orderBy: { field: 'start_date', order: 'asc' },
@@ -117,15 +124,27 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     setExpandedTasks(newExpanded);
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-      case 'Working':
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      default:
-        return <Circle className="h-4 w-4 text-gray-400" />;
-    }
+  // Reload data when user switches back to this tab/window
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Tab became visible, refreshing all data (phases, tasks, subtasks)...');
+        mutatePhases();
+        mutateTasks();
+        mutateSubtasks();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [mutatePhases, mutateTasks, mutateSubtasks]);
+
+  // Removed status icons for cleaner UI
+  const getStatusIcon = (_status: string) => {
+    return null; // No icons displayed
   };
 
   const getStatusColor = (status: string) => {
@@ -184,57 +203,23 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     isExpanded: boolean = false,
     onToggle?: () => void
   ) => {
-    // Create indentation for name column only
-    let nameColumnStyle = {};
-    let nameColumnClass = '';
+    // Create consistent indentation for name column
+    let paddingLeft = '0.75rem'; // Base padding for phases
     
-    if (level === 1) {
-      nameColumnClass = 'pl-8';
-      nameColumnStyle = { paddingLeft: '2rem' };
-    } else if (level === 2) {
-      nameColumnClass = 'pl-16';
-      nameColumnStyle = { paddingLeft: '4rem' };
-    } else if (level > 2) {
-      nameColumnStyle = { paddingLeft: `${1 + (level * 1)}rem` };
-    }
-    
-    let icon = '';
-    let iconClass = 'mr-3 text-lg';
-    let prefixIcon = '';
-    
-    // Add prefix icons to distinguish phases from tasks
-    if (type === 'phase') {
-      prefixIcon = '📋';
-    } else if (type === 'task') {
-      prefixIcon = '📝';
-    } else if (type === 'phase-task') {
-      prefixIcon = '📄';
+    if (type === 'phase-task' || (type === 'task' && level === 1)) {
+      paddingLeft = '2rem'; // All tasks (both in phases and standalone) at same level
     } else if (type === 'subtask') {
-      prefixIcon = '📌';
+      paddingLeft = '3.5rem'; // Subtasks indented further
     }
     
-    if (type === 'phase' || (type === 'task' && hasChildren) || (type === 'phase-task' && hasChildren)) {
-      icon = isExpanded ? '▼' : '▶️';
-      iconClass += ' text-blue-600 cursor-pointer hover:text-blue-800 transition-colors';
-    } else if (type === 'phase-task') {
-      icon = '•';
-      iconClass += ' text-green-500';
-    } else if (type === 'subtask') {
-      icon = '◦';
-      iconClass += ' text-gray-400';
-    } else if (type === 'task') {
-      icon = '●';
-      iconClass += ' text-orange-500';
-    } else {
-      icon = '●';
-      iconClass += ' text-gray-400';
-    }
-
+    // Simplified expand/collapse icon logic - removed prefix emojis for cleaner UI
+    const hasExpandButton = type === 'phase' || (type === 'task' && hasChildren) || (type === 'phase-task' && hasChildren);
+    
     const displayName = item.subject || item.name;
     const status = item.status || 'Open';
     const progress = item.progress || 0;
 
-    const handleIconClick = (e: React.MouseEvent) => {
+    const handleExpandClick = (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (onToggle) {
@@ -266,16 +251,24 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
       }
     };
 
-    // Create background color based on level for better visual hierarchy
+    // Create background color based on type for better visual hierarchy
     let backgroundClass = 'hover:bg-gray-50';
     let borderClass = '';
     
-    if (level === 1) {
-      backgroundClass = 'bg-blue-50/30 hover:bg-blue-50';
-      borderClass = 'border-l-4 border-l-blue-300';
-    } else if (level === 2) {
-      backgroundClass = 'bg-green-50/30 hover:bg-green-50';
-      borderClass = 'border-l-4 border-l-green-300';
+    if (type === 'phase') {
+      // Phase có màu nền trắng, chỉ có hover effect
+      backgroundClass = 'bg-white hover:bg-gray-50';
+      borderClass = '';
+    } else if (type === 'task') {
+      // Task standalone có màu nền trắng, chỉ có hover effect
+      backgroundClass = 'bg-white hover:bg-gray-50';
+      borderClass = '';
+    } else if (type === 'phase-task') {
+      backgroundClass = 'bg-green-50/20 hover:bg-green-50';
+      borderClass = 'border-l-2 border-l-green-200';
+    } else if (type === 'subtask') {
+      backgroundClass = 'bg-yellow-50/20 hover:bg-yellow-50';
+      borderClass = 'border-l-2 border-l-yellow-200';
     }
 
     return (
@@ -289,18 +282,29 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
           onDoubleClick={handleDoubleClick}
         >
           {/* Task/Phase Name Column - Only this column gets indented */}
-          <div className={`col-span-5 flex items-center ${nameColumnClass}`} style={level > 0 ? nameColumnStyle : {}}>
-            <span 
-              className={iconClass}
-              onClick={handleIconClick}
-              role={onToggle ? "button" : undefined}
-              tabIndex={onToggle ? 0 : undefined}
-            >
-              {icon}
-            </span>
-            <span className="mr-2 text-lg">{prefixIcon}</span>
+          <div className="col-span-5 flex items-center" style={{ paddingLeft }}>
+            {/* Expand/Collapse Button */}
+            {hasExpandButton && (
+              <button
+                className="mr-2 p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                onClick={handleExpandClick}
+                type="button"
+                aria-label={isExpanded ? "Collapse" : "Expand"}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-gray-600" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-gray-600" />
+                )}
+              </button>
+            )}
+            {/* Add placeholder space for items without expand button to align text */}
+            {!hasExpandButton && (
+              <div className="mr-2 p-1 flex-shrink-0 w-6 h-6"></div>
+            )}
+            {/* Status Icon (now removed for cleaner UI) */}
             {getStatusIcon(status)}
-            <div className="ml-3 flex-1 min-w-0">
+            <div className="ml-1 flex-1 min-w-0">
               <div 
                 className={`font-medium truncate ${type === 'phase' ? 'text-blue-900 text-lg' : type === 'task' ? 'text-orange-900' : type === 'phase-task' ? 'text-green-900' : 'text-gray-700'}`}
                 onMouseEnter={(e) => showTooltip(displayName, e)}
@@ -591,10 +595,10 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
 
             return (
               <div key={task.name}>
-                {/* Standalone Task Row */}
+                {/* Standalone Task Row - Set level to 1 to match phase-task level */}
                 {renderTaskItem(
                   task,
-                  0,
+                  1,
                   'task',
                   hasSubtasks,
                   isTaskExpanded,
@@ -608,7 +612,7 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                   <div key={`standalone-subtask-${subIndex}`}>
                     {renderTaskItem(
                       subtask,
-                      1,
+                      2,
                       'subtask',
                       false,
                       false

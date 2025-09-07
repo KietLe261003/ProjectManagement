@@ -68,6 +68,30 @@ export interface Task {
   parent_task_name: string | null;
 }
 
+// UI representation of tasks for the TasksPage component
+export interface TaskItem {
+  id: string;
+  title: string;
+  description: string;
+  project: string;
+  assignee: string;
+  status: string;
+  priority: string;
+  dueDate: string;
+  labels: string[];
+  todoId: string;
+  referenceName: string;
+  referenceType: string;
+  // Additional fields for Task and SubTask distinction
+  type: 'Task' | 'SubTask';
+  parentTask?: string; // For SubTasks, this will be the parent task name
+  taskProgress?: number; // For Tasks
+  expectedTime?: number; // For Tasks
+  actualTime?: number; // For Tasks
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface Timesheet {
   name: string;
   employee: string;
@@ -85,7 +109,7 @@ export interface Timesheet {
 export interface FilteredData {
   filteredProjects: Project[];
   filteredPhases: Phase[];
-  filteredTasks: Task[];
+  filteredTasks: TaskItem[];
   filteredTimesheets: Timesheet[];
 }
 

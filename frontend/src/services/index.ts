@@ -13,6 +13,9 @@ export * from './projectProgressService';
 export * from './projectCascadeDeleteService';
 export * from './todoService';
 export * from './authService';
+export * from './userAssignedTaskService';
+export * from './teamTaskService';
+export * from './alternativeTeamService';
 
 // Re-export commonly used hooks
 export {
@@ -47,5 +50,6 @@ export {
   useDepartments,
   useCostCenters,
   useProjectTemplates,
+  useTeams,
   useDocTypeOptions
 } from './docTypeService';

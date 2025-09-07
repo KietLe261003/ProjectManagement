@@ -7,6 +7,7 @@ import EditTask from './EditTask';
 import DeleteTask from './DeleteTask';
 import { useProjectProgressUpdate } from '@/hooks/useProjectProgressUpdate';
 import { useTaskProgressCalculation } from '@/services/taskProgressService';
+import { FileAttachments } from '@/components/FileAttachments';
 
 interface TaskDetailsProps {
   task: any;
@@ -422,6 +423,16 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
         )}
       </div>
 
+      {/* Task Files Section */}
+      <FileAttachments
+        doctype="Task"
+        docname={task.name}
+        title="Task Files"
+        allowUpload={true}
+        allowDelete={true}
+        className="mt-8"
+      />
+
       {/* Create SubTask Modal */}
       <CreateSubTask
         isOpen={isCreateSubTaskModalOpen}
@@ -429,17 +440,17 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
         projectName={projectName}
         parentTask={task.name}
         onSuccess={async () => {
-          console.log('SubTask created successfully for task:', task.name);
+          // console.log('SubTask created successfully for task:', task.name);
           mutateSubTasks(); // Refresh subtasks data
           
           // Recalculate task progress based on subtasks
           setTimeout(async () => {
-            console.log('Recalculating task progress after subtask creation...');
+            // console.log('Recalculating task progress after subtask creation...');
             await calculateAndUpdateTaskProgress(task.name);
             
             // Then update phase progress
             setTimeout(async () => {
-              console.log('Updating phase progress after task progress update...');
+              // console.log('Updating phase progress after task progress update...');
               await updatePhaseProgressForTask(task.name, projectName);
             }, 500);
           }, 500);

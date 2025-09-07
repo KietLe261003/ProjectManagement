@@ -7,6 +7,7 @@ export const useProjectProgressUpdate = () => {
 
   const updatePhaseProgressForTask = async (taskName: string, projectName: string) => {
     try {
+      
       // Get all phases for this project that contain the task
       const phasesResponse = await fetch('/api/method/frappe.client.get_list', {
         method: 'POST',
@@ -30,10 +31,31 @@ export const useProjectProgressUpdate = () => {
       const phasesResult = await phasesResponse.json();
       const phases = phasesResult.message || [];
 
-      // Find phases that contain this task
-      const affectedPhases = phases.filter((phase: any) => {
-        return phase.tasks && phase.tasks.some((phaseTask: any) => phaseTask.task === taskName);
-      });
+      // Find phases that contain this task by fetching full phase documents
+      const affectedPhases = [];
+      
+      for (const phase of phases) {
+        try {
+          const phaseDocResponse = await fetch(`/api/resource/project_phase/${phase.name}`, {
+            headers: {
+              'Accept': 'application/json',
+              'X-Frappe-CSRF-Token': (window as any).csrf_token || ''
+            },
+            credentials: 'include'
+          });
+          
+          if (phaseDocResponse.ok) {
+            const phaseDoc = await phaseDocResponse.json();
+            if (phaseDoc.data.tasks && phaseDoc.data.tasks.some((phaseTask: any) => phaseTask.task === taskName)) {
+              affectedPhases.push(phase);
+            }
+          }
+        } catch (error) {
+          console.warn('Error fetching phase document:', phase.name, error);
+        }
+      }
+
+      console.log(`Found ${affectedPhases.length} phases affected by task ${taskName}`);
 
       // Update progress for each affected phase
       for (const phase of affectedPhases) {
