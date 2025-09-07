@@ -9,8 +9,13 @@ import {
 import { Dashboard } from './pages/dashboard-page'
 import { ProjectsPage } from './pages/projects-page/ProjectsPage.tsx'
 import { TasksPage } from './pages/tasks-page/TasksPage.tsx'
+import { DocumentsPage } from './pages/documents-page'
+import { BudgetPage } from './pages/budget-page'
+import { RiskPage } from './pages/risk-page'
+import { MeetingsPage } from './pages/meetings-page'
+import { ReportsPage } from './pages/reports-page'
+import { SettingsPage } from './pages/settings-page'
 import { TimeTrackingPage } from './pages/TimeTrackingPage'
-import { SimplePage } from './pages/SimplePage'
 
 const router = createBrowserRouter([
   {
@@ -30,32 +35,33 @@ const router = createBrowserRouter([
         element: <TasksPage />,
       },
       {
-        path: "time-tracking",
-        element: <TimeTrackingPage />,
+        path: "documents",
+        element: <DocumentsPage />,
       },
       {
-        path: "cost-analysis",
-        element: <SimplePage title="Cost Analysis" description="Track project costs and budget allocations" />,
+        path: "budget",
+        element: <BudgetPage />,
+      },
+      {
+        path: "risk",
+        element: <RiskPage />,
+      },
+      {
+        path: "meetings",
+        element: <MeetingsPage />,
       },
       {
         path: "reports",
-        element: <SimplePage title="Reports" description="Generate detailed reports and analytics" />,
-      },
-      {
-        path: "calendar",
-        element: <SimplePage title="Calendar" description="Manage deadlines and project timelines" />,
-      },
-      {
-        path: "team",
-        element: <SimplePage title="Team Management" description="Manage team members and permissions" />,
-      },
-      {
-        path: "documents",
-        element: <SimplePage title="Documents" description="Store and organize project documents" />,
+        element: <ReportsPage />,
       },
       {
         path: "settings",
-        element: <SimplePage title="Settings" description="Configure your workspace preferences" />,
+        element: <SettingsPage />,
+      },
+      // Legacy routes for backward compatibility
+      {
+        path: "time-tracking",
+        element: <TimeTrackingPage />,
       },
     ]
   },
