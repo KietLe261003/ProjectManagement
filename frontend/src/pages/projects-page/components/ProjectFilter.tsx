@@ -130,7 +130,7 @@ const ProjectFilter: React.FC<ProjectFilterProps> = ({
               }`}
             >
               <Filter className="mr-2 h-4 w-4" />
-              Filter
+              Bộ lọc
               {hasActiveFilters && (
                 <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {[filters.selectedTeam, filters.selectedStatus].filter(Boolean).length}

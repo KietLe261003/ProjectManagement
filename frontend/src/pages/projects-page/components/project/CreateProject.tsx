@@ -25,6 +25,7 @@ interface ProjectFormData {
   status: string;
   priority?: string;
   department?: string;
+  team?:string;
   company?: string;
   cost_center?: string;
   project_template?: string;
@@ -193,7 +194,7 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
               </div>
             </div>
 
-            {/* Priority and Department */}
+            {/* Priority and Team */}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Priority</Label>
@@ -210,16 +211,16 @@ const CreateProject = ({ onProjectCreated }: CreateProjectProps) => {
               </div>
 
               <div className="grid gap-2">
-                <Label>Department</Label>
+                <Label>Team</Label>
                 <Controller
-                  name="department"
+                  name="team"
                   control={control}
                   render={({ field }) => (
                     <Combobox
-                      doctype="Department"
+                      doctype="Team"
                       value={field.value || ""}
                       onChange={field.onChange}
-                      placeholder="Select department..."
+                      placeholder="Select team..."
                       className="w-full"
                     />
                   )}
