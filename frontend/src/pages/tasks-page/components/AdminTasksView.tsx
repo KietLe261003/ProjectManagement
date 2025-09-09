@@ -428,20 +428,20 @@ const AdminTasksView: React.FC<AdminTasksViewProps> = ({
         </div>
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <p className="text-sm font-medium text-slate-500">Tổng công việc</p>
-            <p className="text-3xl font-bold text-slate-900 mt-1">{statistics.total}</p>
+            <p className="text-sm text-center font-medium text-slate-500">Tổng công việc</p>
+            <p className="text-3xl text-center font-bold text-slate-900 mt-1">{statistics.total}</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <p className="text-sm font-medium text-slate-500">Đang thực hiện</p>
-            <p className="text-3xl font-bold text-orange-500 mt-1">{statistics.working}</p>
+            <p className="text-sm text-center font-medium text-slate-500">Đang thực hiện</p>
+            <p className="text-3xl text-center font-bold text-orange-500 mt-1">{statistics.working}</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <p className="text-sm font-medium text-slate-500">Hoàn thành</p>
-            <p className="text-3xl font-bold text-emerald-500 mt-1">{statistics.completed}</p>
+            <p className="text-sm text-center font-medium text-slate-500">Hoàn thành</p>
+            <p className="text-3xl text-center font-bold text-emerald-500 mt-1">{statistics.completed}</p>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <p className="text-sm font-medium text-slate-500">Trễ hạn</p>
-            <p className="text-3xl font-bold text-red-500 mt-1">{statistics.overdue}</p>
+            <p className="text-sm text-center font-medium text-slate-500">Trễ hạn</p>
+            <p className="text-3xl text-center font-bold text-red-500 mt-1">{statistics.overdue}</p>
           </div>
         </div>
       </section>
