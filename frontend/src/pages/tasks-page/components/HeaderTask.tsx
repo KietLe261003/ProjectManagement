@@ -1,22 +1,21 @@
+import { useFrappeAuth } from 'frappe-react-sdk';
 import React from 'react';
 
 interface HeaderTaskProps {
   role: string | null | undefined;
-  currentView: 'user' | 'leader';
-  setCurrentView: (view: 'user' | 'leader') => void;
+  currentView: 'user' | 'leader' | 'admin';
+  setCurrentView: (view: 'user' | 'leader' | 'admin') => void;
 }
 
 const HeaderTask: React.FC<HeaderTaskProps> = ({ role, currentView, setCurrentView }) => {
+  const isAdmin = useFrappeAuth().currentUser === "Administrator";
   return (
     <header className="mb-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Trình Quản Lý Công Việc</h1>
-          <p className="text-slate-500 mt-1">
-            Quản lý công việc và dự án một cách hiệu quả • Role: {role || 'Member'}
-          </p>
         </div>
-        {role === 'Leader' && (
+        {(role === 'Leader' || isAdmin) && (
           <div className="inline-flex bg-slate-200 rounded-lg p-1">
             <button
               onClick={() => setCurrentView('user')}
@@ -26,18 +25,32 @@ const HeaderTask: React.FC<HeaderTaskProps> = ({ role, currentView, setCurrentVi
                   : 'text-slate-600'
               }`}
             >
-              Giao diện User
+              User
             </button>
-            <button
-              onClick={() => setCurrentView('leader')}
-              className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
-                currentView === 'leader'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600'
-              }`}
-            >
-              Giao diện Leader
-            </button>
+            {role === 'Leader' && (
+              <button
+                onClick={() => setCurrentView('leader')}
+                className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
+                  currentView === 'leader'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600'
+                }`}
+              >
+                Leader
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setCurrentView('admin')}
+                className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${
+                  currentView === 'admin'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600'
+                }`}
+              >
+                Admin
+              </button>
+            )}
           </div>
         )}
       </div>

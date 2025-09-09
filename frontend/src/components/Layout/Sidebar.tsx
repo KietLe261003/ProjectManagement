@@ -10,8 +10,6 @@ import {
   Calendar,
   BarChart3,
   Settings,
-  ChevronLeft,
-  ChevronRight
 } from 'lucide-react';
 
 const navigation = [
@@ -35,17 +33,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
   const location = useLocation();
 
   return (
-    <div className={`flex flex-col bg-white shadow-lg border-r border-gray-200 transition-all duration-300 ${
-      collapsed ? 'w-20' : 'w-85'
-    }`}>
+    <div
+      className={`flex flex-col bg-white shadow-lg border-r border-gray-200 transition-all duration-300 ${
+        collapsed ? "w-20" : "w-85"
+      }`}
+    >
       {/* Logo */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
         {!collapsed && (
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">RD</span>
+            <div className="w-10 h-10 rounded-lg overflow-hidden">
+              <img
+                src="https://ctuav.vn/wp-content/uploads/2024/08/Logo-moi-ctuav-e1755917887778.png"
+                alt="R&D"
+                className="w-full h-full object-contain bg-white"
+              />
             </div>
-            <span className="text-xl font-bold text-gray-800">R&D Management</span>
+            <span className="text-xl font-bold text-gray-800">
+              R&D Management
+            </span>
           </div>
         )}
         {collapsed && (
@@ -53,7 +59,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
             <span className="text-white font-bold text-sm">RD</span>
           </div>
         )}
-        
       </div>
 
       {/* Navigation */}
@@ -66,30 +71,39 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
               to={item.href}
               className={`
                 group flex items-start rounded-lg transition-all duration-200 relative
-                ${collapsed ? 'px-2 py-3 justify-center' : 'px-3 py-3'}
-                ${isActive 
-                  ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' 
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                ${collapsed ? "px-2 py-3 justify-center" : "px-3 py-3"}
+                ${
+                  isActive
+                    ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                 }
               `}
               title={collapsed ? item.name : undefined}
             >
-              <item.icon 
+              <item.icon
                 className={`
                   h-5 w-5 transition-colors duration-200 flex-shrink-0
-                  ${collapsed ? 'mr-0' : 'mr-3 mt-0.5'}
-                  ${isActive ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'}
-                `} 
+                  ${collapsed ? "mr-0" : "mr-3 mt-0.5"}
+                  ${
+                    isActive
+                      ? "text-blue-600"
+                      : "text-gray-500 group-hover:text-gray-700"
+                  }
+                `}
               />
               {!collapsed && (
                 <div className="flex flex-col">
                   <span className="font-medium text-sm">{item.name}</span>
-                  <span className={`text-xs mt-0.5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <span
+                    className={`text-xs mt-0.5 ${
+                      isActive ? "text-blue-600" : "text-gray-500"
+                    }`}
+                  >
                     {item.subtitle}
                   </span>
                 </div>
               )}
-              
+
               {/* Tooltip for collapsed state */}
               {collapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
@@ -104,7 +118,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
 
       {/* User Profile */}
       <div className="p-4 border-t border-gray-200">
-        <div className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'}`}>
+        <div
+          className={`flex items-center ${
+            collapsed ? "justify-center" : "space-x-3"
+          }`}
+        >
           <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
             <span className="text-white font-medium text-sm">AU</span>
           </div>
