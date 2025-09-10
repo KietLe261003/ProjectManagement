@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   FileText, Search, Users, FolderOpen, Calendar, CheckSquare, ExternalLink, 
-  Download, User, Clock, Link, Upload, Eye, Trash2,
+  Download, User, Clock, Link, Upload, Eye, Trash2, Filter, ArrowLeft,
   ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useFrappeGetDocList } from 'frappe-react-sdk';
@@ -9,7 +9,7 @@ import type { Team } from '@/types/Todo/Team';
 import type { Project } from '@/types';
 import type { Phase } from '@/types';
 import type { Task } from '@/types';
-import { mockProjectDocuments } from '@/data/mockProjectDocuments';
+import { mockProjectDocuments, stageConfigs } from '@/data/mockProjectDocuments';
 
 interface FileAttachment {
   name: string;
@@ -40,6 +40,7 @@ export const DocumentsPage: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedPhase, setSelectedPhase] = useState<string>('');
   const [selectedTask, setSelectedTask] = useState<string>('');
+  const [selectedStage, setSelectedStage] = useState<string>(''); // For project stages
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set()); // For accordion state
   const [documentStatuses, setDocumentStatuses] = useState<Record<string, string>>({});
 
@@ -201,6 +202,21 @@ export const DocumentsPage: React.FC = () => {
     return file.file_url.startsWith('http') && (file.file_size === 0 || !file.file_name.includes('.'));
   };
 
+  const getFileTypeIcon = (fileType: string) => {
+    switch (fileType) {
+      case 'docx':
+      case 'doc':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'pdf':
+        return <FileText className="h-5 w-5 text-red-500" />;
+      case 'xlsx':
+      case 'xls':
+        return <FileText className="h-5 w-5 text-green-500" />;
+      default:
+        return <FileText className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
   // Function to update document status
   const updateDocumentStatus = (docId: string, newStatus: string) => {
     // Update local state immediately for UI responsiveness
@@ -229,26 +245,56 @@ export const DocumentsPage: React.FC = () => {
     if (!phases || !selectedProject) return [];
     const projectPhases = phases.filter(phase => phase.project === selectedProject);
     
-    // Hiển thị tất cả phases của dự án, giới hạn tối đa 8 phases
-    return projectPhases.slice(0, 8);
-  }, [phases, selectedProject]);
+    // Filter phases based on requirements:
+    // - Hide phases with 0% progress and no tasks
+    // - Limit to 8 phases max
+    const filteredPhases = projectPhases.filter(phase => {
+      const phaseProgress = phase.progress || 0;
+      const phaseTasks = tasks?.filter(task => task.phase === phase.name) || [];
+      
+      // Hide phases with 0% progress and no tasks
+      if (phaseProgress === 0 && phaseTasks.length === 0) {
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // Limit to 8 phases maximum
+    return filteredPhases.slice(0, 8);
+  }, [phases, selectedProject, tasks]);
+
+  // Generate document status based on phase progress
+  const getDocumentStatusByPhase = (phaseProgress: number, phaseTasks: Task[]) => {
+    if (phaseProgress === 100) {
+      return 'approved';
+    } else if (phaseProgress === 0 && phaseTasks.length > 0) {
+      // Random between empty and draft
+      return Math.random() > 0.5 ? 'empty' : 'draft';
+    } else if (phaseProgress >= 1 && phaseProgress <= 90) {
+      // Random between empty, draft, and pending
+      const options = ['empty', 'draft', 'pending'];
+      return options[Math.floor(Math.random() * options.length)];
+    }
+    
+    return 'empty';
+  };
 
   // Generate documents for each phase dynamically
   const getPhaseDocuments = (phase: Phase) => {
     const phaseProgress = phase.progress || 0;
+    const phaseTasks = tasks?.filter(task => task.phase === phase.name) || [];
     
-    // Get documents for this stage number (sử dụng thứ tự cố định từ mockProjectDocuments)
+    // Get documents for this stage number (map to stage number based on order)
     const phaseIndex = currentPhases.findIndex(p => p.name === phase.name) + 1;
     const stageFilter = `GIAI ĐOẠN ${phaseIndex}`;
     
-    // Sử dụng tài liệu cố định từ mockProjectDocuments theo thứ tự giai đoạn
     return mockProjectDocuments
       .filter(doc => doc.category.includes(stageFilter))
-      .map((doc) => ({
+      .map(doc => ({
         ...doc,
-        // Giữ nguyên status và hasFile từ mock data thay vì generate động
-        status: phaseProgress === 100 ? 'approved' : doc.status,
-        hasFile: phaseProgress === 100 ? true : doc.hasFile
+        status: getDocumentStatusByPhase(phaseProgress, phaseTasks),
+        hasFile: phaseProgress === 100 ? true : (Math.random() > 0.3) // More files for completed phases
       }));
   };
 
@@ -314,7 +360,7 @@ export const DocumentsPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Quản lý tài liệu</h1>
-          <p className="text-gray-600">Quản lý tài liệu theo cấu trúc Team {'->'} Project {'->'} Phase</p>
+          <p className="text-gray-600">Quản lý tài liệu theo cấu trúc Team {'->'} Project {'->'} Phase {'->'} Task</p>
         </div>
       </div>
 
@@ -517,28 +563,28 @@ export const DocumentsPage: React.FC = () => {
 
         {currentView === 'project-detail' && (
           <div className="space-y-6">
-            {/* Check if project has phases */}
-            {currentPhases && currentPhases.length > 0 ? (
-              <div className="space-y-4">
-                {currentPhases.map((phase, index) => {
-                  const phaseKey = `phase-${phase.name}`;
-                  const phaseProgress = phase.progress || 0;
-                  const phaseDocuments = getPhaseDocuments(phase);
-                  const stageNumber = index + 1;
-                  
-                  // Color schemes for different phases
-                  const colorSchemes = [
-                    { bg: 'bg-blue-50', hoverBg: 'hover:bg-blue-100', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', textColor: 'text-blue-600', uploadBg: 'bg-blue-600', uploadHover: 'hover:bg-blue-700' },
-                    { bg: 'bg-green-50', hoverBg: 'hover:bg-green-100', iconBg: 'bg-green-100', iconColor: 'text-green-600', textColor: 'text-green-600', uploadBg: 'bg-green-600', uploadHover: 'hover:bg-green-700' },
-                    { bg: 'bg-purple-50', hoverBg: 'hover:bg-purple-100', iconBg: 'bg-purple-100', iconColor: 'text-purple-600', textColor: 'text-purple-600', uploadBg: 'bg-purple-600', uploadHover: 'hover:bg-purple-700' },
-                    { bg: 'bg-orange-50', hoverBg: 'hover:bg-orange-100', iconBg: 'bg-orange-100', iconColor: 'text-orange-600', textColor: 'text-orange-600', uploadBg: 'bg-orange-600', uploadHover: 'hover:bg-orange-700' },
-                    { bg: 'bg-red-50', hoverBg: 'hover:bg-red-100', iconBg: 'bg-red-100', iconColor: 'text-red-600', textColor: 'text-red-600', uploadBg: 'bg-red-600', uploadHover: 'hover:bg-red-700' },
-                    { bg: 'bg-indigo-50', hoverBg: 'hover:bg-indigo-100', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600', textColor: 'text-indigo-600', uploadBg: 'bg-indigo-600', uploadHover: 'hover:bg-indigo-700' },
-                    { bg: 'bg-yellow-50', hoverBg: 'hover:bg-yellow-100', iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600', textColor: 'text-yellow-600', uploadBg: 'bg-yellow-600', uploadHover: 'hover:bg-yellow-700' },
-                    { bg: 'bg-pink-50', hoverBg: 'hover:bg-pink-100', iconBg: 'bg-pink-100', iconColor: 'text-pink-600', textColor: 'text-pink-600', uploadBg: 'bg-pink-600', uploadHover: 'hover:bg-pink-700' }
-                  ];
-                  
-                  const colorScheme = colorSchemes[index % colorSchemes.length];
+            {/* Dynamic Phase-based Accordion */}
+            <div className="space-y-4">
+              {currentPhases.map((phase, index) => {
+                const phaseKey = `phase-${phase.name}`;
+                const phaseProgress = phase.progress || 0;
+                const phaseTasks = tasks?.filter(task => task.phase === phase.name) || [];
+                const phaseDocuments = getPhaseDocuments(phase);
+                const stageNumber = index + 1;
+                
+                // Color schemes for different phases
+                const colorSchemes = [
+                  { bg: 'bg-blue-50', hoverBg: 'hover:bg-blue-100', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', textColor: 'text-blue-600', uploadBg: 'bg-blue-600', uploadHover: 'hover:bg-blue-700' },
+                  { bg: 'bg-green-50', hoverBg: 'hover:bg-green-100', iconBg: 'bg-green-100', iconColor: 'text-green-600', textColor: 'text-green-600', uploadBg: 'bg-green-600', uploadHover: 'hover:bg-green-700' },
+                  { bg: 'bg-purple-50', hoverBg: 'hover:bg-purple-100', iconBg: 'bg-purple-100', iconColor: 'text-purple-600', textColor: 'text-purple-600', uploadBg: 'bg-purple-600', uploadHover: 'hover:bg-purple-700' },
+                  { bg: 'bg-orange-50', hoverBg: 'hover:bg-orange-100', iconBg: 'bg-orange-100', iconColor: 'text-orange-600', textColor: 'text-orange-600', uploadBg: 'bg-orange-600', uploadHover: 'hover:bg-orange-700' },
+                  { bg: 'bg-red-50', hoverBg: 'hover:bg-red-100', iconBg: 'bg-red-100', iconColor: 'text-red-600', textColor: 'text-red-600', uploadBg: 'bg-red-600', uploadHover: 'hover:bg-red-700' },
+                  { bg: 'bg-indigo-50', hoverBg: 'hover:bg-indigo-100', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600', textColor: 'text-indigo-600', uploadBg: 'bg-indigo-600', uploadHover: 'hover:bg-indigo-700' },
+                  { bg: 'bg-yellow-50', hoverBg: 'hover:bg-yellow-100', iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600', textColor: 'text-yellow-600', uploadBg: 'bg-yellow-600', uploadHover: 'hover:bg-yellow-700' },
+                  { bg: 'bg-pink-50', hoverBg: 'hover:bg-pink-100', iconBg: 'bg-pink-100', iconColor: 'text-pink-600', textColor: 'text-pink-600', uploadBg: 'bg-pink-600', uploadHover: 'hover:bg-pink-700' }
+                ];
+                
+                const colorScheme = colorSchemes[index % colorSchemes.length];
                 
                 // Phase status emoji based on progress
                 const getPhaseEmoji = (progress: number) => {
@@ -570,31 +616,15 @@ export const DocumentsPage: React.FC = () => {
                         </div>
                         <div className="text-left">
                           <h3 className="text-lg font-semibold text-gray-900">
-                            {getPhaseEmoji(phaseProgress)} {phase.subject || 'Unnamed Phase'}
+                            {getPhaseEmoji(phaseProgress)} Giai đoạn {stageNumber}: {phase.subject || 'Unnamed Phase'}
                           </h3>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
                             <span>
                               {phaseDocuments.filter(d => d.hasFile).length}/
                               {phaseDocuments.length} tài liệu
                             </span>
-                            <span className={`font-medium ${
-                              phaseProgress === 100 ? 'text-green-600' : 
-                              phaseProgress >= 1 ? 'text-yellow-600' : 
-                              'text-gray-500'
-                            }`}>
-                              Progress: {phaseProgress}%
-                            </span>
-                            {/* Status indicator theo yêu cầu mới */}
-                            {phaseProgress === 100 && (
-                              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                Tài liệu đã duyệt
-                              </span>
-                            )}
-                            {phaseProgress !== 100 && (
-                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                Tài liệu trống/nháp
-                              </span>
-                            )}
+                            <span>Progress: {phaseProgress}%</span>
+                            <span>{phaseTasks.length} tasks</span>
                           </div>
                         </div>
                       </div>
@@ -717,14 +747,6 @@ export const DocumentsPage: React.FC = () => {
                 );
               })}
             </div>
-            ) : (
-              // Thông báo khi dự án không có giai đoạn
-              <div className="text-center py-12">
-                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 text-lg font-medium">Dự án không có giai đoạn</p>
-                <p className="text-gray-500 text-sm mt-2">Dự án này chưa được thiết lập các giai đoạn</p>
-              </div>
-            )}
           </div>
         )}
 
