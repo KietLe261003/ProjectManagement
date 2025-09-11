@@ -69,6 +69,62 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
     return [];
   }, [allTasks, activePhase.tasks]);
 
+  // Get unique task names for ToDo fetching
+  const taskNames = phaseTasks?.map((task: any) => task.name) || [];
+
+  // Fetch ToDo assignments for tasks
+  const { data: taskToDos } = useFrappeGetDocList('ToDo', {
+    fields: ['name', 'reference_type', 'reference_name', 'allocated_to', 'status'],
+    filters: taskNames.length > 0 ? [
+      ['reference_type', '=', 'Task'],
+      ['reference_name', 'in', taskNames]
+    ] : [['name', '=', 'dummy-non-existent-todo']],
+    limit: 0
+  });
+
+  // Get unique user IDs from task assignments
+  const taskUserIds = Array.from(new Set(taskToDos?.map((todo: any) => todo.allocated_to).filter(Boolean))) || [];
+
+  // Fetch user details for task assignments
+  const { data: taskUsers } = useFrappeGetDocList('User', {
+    fields: ['name', 'full_name', 'email'],
+    filters: taskUserIds.length > 0 ? [['name', 'in', taskUserIds]] : [['name', '=', 'dummy-non-existent-user']],
+    limit: 0
+  });
+
+  // Tooltip state
+  const [tooltip, setTooltip] = useState<{
+    visible: boolean;
+    text: string;
+    x: number;
+    y: number;
+  }>({ visible: false, text: '', x: 0, y: 0 });
+
+  // Tooltip functions
+  const showTooltip = (text: string, event: React.MouseEvent) => {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    setTooltip({
+      visible: true,
+      text,
+      x: rect.left,
+      y: rect.top - 35,
+    });
+  };
+
+  const hideTooltip = () => {
+    setTooltip({ visible: false, text: '', x: 0, y: 0 });
+  };
+
+  // Helper function to get assigned user for a task
+  const getTaskAssignment = (taskName: string) => {
+    const assignment = taskToDos?.find((todo: any) => todo.reference_name === taskName);
+    if (!assignment?.allocated_to) return null;
+    
+    // Find user details
+    const userDetails = taskUsers?.find((user: any) => user.name === assignment.allocated_to);
+    return userDetails?.full_name || assignment.allocated_to;
+  };
+
   // Calculate phase progress based on task progress
   const calculatedPhaseProgress = React.useMemo(() => {
     if (!phaseTasks || phaseTasks.length === 0) return 0;
@@ -433,11 +489,12 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
             <div className="bg-gray-50 border-b border-gray-200">
               <div className="grid grid-cols-12 gap-4 px-6 py-3">
                 <div className="col-span-1 text-sm font-medium text-gray-700">#</div>
-                <div className="col-span-4 text-sm font-medium text-gray-700">Task</div>
+                <div className="col-span-3 text-sm font-medium text-gray-700">Task</div>
                 <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Progress</div>
+                <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Assign to</div>
                 <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Status</div>
                 <div className="col-span-1 text-sm font-medium text-gray-700 text-center">Priority</div>
-                <div className="col-span-2 text-sm font-medium text-gray-700 text-center">Actions</div>
+                <div className="col-span-1 text-sm font-medium text-gray-700 text-center">Actions</div>
               </div>
             </div>
 
@@ -449,7 +506,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
                     <div className="col-span-1 flex items-center">
                       <span className="text-sm text-gray-600">{index + 1}</span>
                     </div>
-                    <div className="col-span-4 flex items-center gap-3">
+                    <div className="col-span-3 flex items-center gap-3">
                       <div className="p-1 bg-orange-100 rounded">
                         <span className="text-sm">📝</span>
                       </div>
@@ -472,6 +529,23 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
                       </div>
                     </div>
                     <div className="col-span-2 flex items-center justify-center">
+                      {(() => {
+                        const assignedUser = getTaskAssignment(task.name);
+                        return assignedUser ? (
+                          <span 
+                            className="text-sm text-gray-700 truncate inline-block max-w-full"
+                            title={assignedUser.length > 15 ? assignedUser : undefined}
+                            onMouseEnter={(e) => assignedUser.length > 15 && showTooltip(assignedUser, e)}
+                            onMouseLeave={hideTooltip}
+                          >
+                            {assignedUser.length > 15 ? `${assignedUser.substring(0, 15)}...` : assignedUser}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">Unassigned</span>
+                        );
+                      })()}
+                    </div>
+                    <div className="col-span-2 flex items-center justify-center">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(task.status || 'Open')}`}>
                         {task.status || 'Open'}
                       </span>
@@ -483,7 +557,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="col-span-2 flex items-center justify-center">
+                    <div className="col-span-1 flex items-center justify-center">
                       {onViewTaskDetails && (
                         <Button
                           variant="outline"
@@ -491,7 +565,7 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
                           onClick={() => onViewTaskDetails(task)}
                           className="h-7 px-2 text-xs"
                         >
-                          View Details
+                          View
                         </Button>
                       )}
                     </div>
@@ -578,6 +652,27 @@ export const PhaseDetails: React.FC<PhaseDetailsProps> = ({
         onClose={() => setIsDeletePhaseOpen(false)}
         onSuccess={handleDeleteSuccess}
       />
+
+      {/* Tooltip */}
+      {tooltip.visible && (
+        <div 
+          className="fixed z-50 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-xl pointer-events-none border border-gray-700"
+          style={{ 
+            left: tooltip.x, 
+            top: tooltip.y,
+            transform: 'translateY(-100%)',
+            maxWidth: '400px',
+            minWidth: '200px',
+            wordWrap: 'break-word'
+          }}
+        >
+          <div className="font-medium leading-relaxed">{tooltip.text}</div>
+          <div 
+            className="absolute top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"
+            style={{ left: '20px' }}
+          ></div>
+        </div>
+      )}
     </div>
   );
 };

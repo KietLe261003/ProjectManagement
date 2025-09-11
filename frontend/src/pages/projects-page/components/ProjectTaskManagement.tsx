@@ -93,8 +93,28 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     limit: 0 // Get all tasks
   });
 
-  // Get task names for filtering subtasks
+  // Get task names for filtering subtasks and ToDos
   const taskNames = tasks?.map((task: any) => task.name) || [];
+
+  // Fetch ToDo assignments for tasks (similar to EditTask approach)
+  const { data: taskToDos, isLoading: toDosLoading, mutate: mutateTaskToDos } = useFrappeGetDocList('ToDo', {
+    fields: ['name', 'allocated_to', 'reference_name', 'reference_type'],
+    filters: [
+      ['reference_type', '=', 'Task'],
+      ['reference_name', 'in', taskNames.length > 0 ? taskNames : ['dummy-non-existent-task']]
+    ],
+    limit: 0
+  });
+
+  // Get unique user IDs from task assignments
+  const taskUserIds = Array.from(new Set(taskToDos?.map((todo: any) => todo.allocated_to).filter(Boolean))) || [];
+
+  // Fetch user details for task assignments
+  const { data: taskUsers, isLoading: taskUsersLoading } = useFrappeGetDocList('User', {
+    fields: ['name', 'full_name', 'email'],
+    filters: taskUserIds.length > 0 ? [['name', 'in', taskUserIds]] : [['name', '=', 'dummy-non-existent-user']],
+    limit: 0
+  });
 
   // Fetch all subtasks for tasks in this project
   const { data: subtasks, isLoading: subtasksLoading, mutate: mutateSubtasks } = useFrappeGetDocList('SubTask', {
@@ -103,6 +123,65 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     orderBy: { field: 'start_date', order: 'asc' },
     limit: 0 // Get all subtasks
   });
+
+  // Get subtask names for fetching their ToDos
+  const subtaskNames = subtasks?.map((subtask: any) => subtask.name) || [];
+
+  // Fetch ToDo assignments for subtasks
+  const { data: subtaskToDos, isLoading: subtaskToDosLoading, mutate: mutateSubtaskToDos } = useFrappeGetDocList('ToDo', {
+    fields: ['name', 'allocated_to', 'reference_name', 'reference_type'],
+    filters: [
+      ['reference_type', '=', 'SubTask'],
+      ['reference_name', 'in', subtaskNames.length > 0 ? subtaskNames : ['dummy-non-existent-subtask']]
+    ],
+    limit: 0
+  });
+
+  // Get unique user IDs from subtask assignments
+  const subtaskUserIds = Array.from(new Set(subtaskToDos?.map((todo: any) => todo.allocated_to).filter(Boolean))) || [];
+
+  // Fetch user details for subtask assignments
+  const { data: subtaskUsers, isLoading: subtaskUsersLoading } = useFrappeGetDocList('User', {
+    fields: ['name', 'full_name', 'email'],
+    filters: subtaskUserIds.length > 0 ? [['name', 'in', subtaskUserIds]] : [['name', '=', 'dummy-non-existent-user']],
+    limit: 0
+  });
+
+  // Tooltip functions
+  const showTooltip = (text: string, event: React.MouseEvent) => {
+    // Simple tooltip implementation using React state
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    setTooltip({
+      visible: true,
+      text,
+      x: rect.left,
+      y: rect.top - 35, // Position above the element
+    });
+  };
+
+  const hideTooltip = () => {
+    setTooltip({ visible: false, text: '', x: 0, y: 0 });
+  };
+
+  // Helper function to get assigned user for a task
+  const getTaskAssignment = (taskName: string) => {
+    const assignment = taskToDos?.find((todo: any) => todo.reference_name === taskName);
+    if (!assignment?.allocated_to) return null;
+    
+    // Find user details
+    const userDetails = taskUsers?.find((user: any) => user.name === assignment.allocated_to);
+    return userDetails?.full_name || assignment.allocated_to; // Fallback to ID if full_name not found
+  };
+
+  // Helper function to get assigned user for a subtask
+  const getSubtaskAssignment = (subtaskName: string) => {
+    const assignment = subtaskToDos?.find((todo: any) => todo.reference_name === subtaskName);
+    if (!assignment?.allocated_to) return null;
+    
+    // Find user details
+    const userDetails = subtaskUsers?.find((user: any) => user.name === assignment.allocated_to);
+    return userDetails?.full_name || assignment.allocated_to; // Fallback to ID if full_name not found
+  };
 
   const togglePhase = (phaseId: string) => {
     const newExpanded = new Set(expandedPhases);
@@ -128,10 +207,12 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('Tab became visible, refreshing all data (phases, tasks, subtasks)...');
+        console.log('Tab became visible, refreshing all data (phases, tasks, subtasks, todos)...');
         mutatePhases();
         mutateTasks();
         mutateSubtasks();
+        mutateTaskToDos();
+        mutateSubtaskToDos();
       }
     };
 
@@ -140,7 +221,7 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [mutatePhases, mutateTasks, mutateSubtasks]);
+  }, [mutatePhases, mutateTasks, mutateSubtasks, mutateTaskToDos, mutateSubtaskToDos]);
 
   // Removed status icons for cleaner UI
   const getStatusIcon = (_status: string) => {
@@ -169,29 +250,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
       default:
         return 'bg-green-100 text-green-800';
     }
-  };
-
-  // Helper functions for tooltip
-  const showTooltip = (text: string, event: React.MouseEvent) => {
-    if (text.length > 30) { // Only show tooltip for long text
-      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-      
-      // Always position tooltip at the start of the table (fixed left position)
-      // Find the table container to get consistent left position
-      const tableContainer = document.querySelector('.bg-white.border.border-gray-200.rounded-lg');
-      const tableRect = tableContainer?.getBoundingClientRect();
-      
-      setTooltip({
-        visible: true,
-        text,
-        x: tableRect ? tableRect.left + 24 : 50, // Use table's left edge + padding, or fallback to 50px
-        y: rect.top - 8, // Position above the current element
-      });
-    }
-  };
-
-  const hideTooltip = () => {
-    setTooltip({ visible: false, text: '', x: 0, y: 0 });
   };
 
   // Render individual task/subtask item
@@ -282,7 +340,7 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
           onDoubleClick={handleDoubleClick}
         >
           {/* Task/Phase Name Column - Only this column gets indented */}
-          <div className="col-span-5 flex items-center" style={{ paddingLeft }}>
+          <div className="col-span-4 flex items-center" style={{ paddingLeft }}>
             {/* Expand/Collapse Button */}
             {hasExpandButton && (
               <button
@@ -352,23 +410,64 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
             )}
           </div>
           
+          {/* Assign to Column - Only show for tasks and subtasks */}
+          <div className="col-span-2 text-center">
+            {(type === 'task' || type === 'phase-task') && (
+              (() => {
+                const assignedUser = getTaskAssignment(item.name);
+                return assignedUser ? (
+                  <span 
+                    className="text-sm text-gray-700 truncate inline-block max-w-full"
+                    title={assignedUser.length > 15 ? assignedUser : undefined}
+                    onMouseEnter={(e) => assignedUser.length > 15 && showTooltip(assignedUser, e)}
+                    onMouseLeave={hideTooltip}
+                  >
+                    {assignedUser.length > 15 ? `${assignedUser.substring(0, 15)}...` : assignedUser}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">Unassigned</span>
+                );
+              })()
+            )}
+            {type === 'subtask' && (
+              (() => {
+                const assignedUser = getSubtaskAssignment(item.name);
+                return assignedUser ? (
+                  <span 
+                    className="text-sm text-gray-700 truncate inline-block max-w-full"
+                    title={assignedUser.length > 15 ? assignedUser : undefined}
+                    onMouseEnter={(e) => assignedUser.length > 15 && showTooltip(assignedUser, e)}
+                    onMouseLeave={hideTooltip}
+                  >
+                    {assignedUser.length > 15 ? `${assignedUser.substring(0, 15)}...` : assignedUser}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">Unassigned</span>
+                );
+              })()
+            )}
+            {type === 'phase' && (
+              <span className="text-xs text-gray-400">-</span>
+            )}
+          </div>
+          
           {/* Progress Column - Always aligned, hidden for subtasks */}
-          <div className="col-span-3 flex items-center justify-start space-x-2">
+          <div className="col-span-2 flex items-center justify-start space-x-2">
             {type !== 'subtask' && (
               <>
-                <div className={`${type === 'phase' ? 'w-20' : 'w-16'} bg-gray-200 rounded-full h-2`}>
+                <div className={`${type === 'phase' ? 'w-16' : 'w-12'} bg-gray-200 rounded-full h-2`}>
                   <div
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
-                <span className="text-sm text-gray-600 w-12 text-left flex-shrink-0">{progress}%</span>
+                <span className="text-sm text-gray-600 w-10 text-left flex-shrink-0">{progress}%</span>
               </>
             )}
             
             {/* View Details buttons - positioned consistently for all types */}
-            <div className="ml-auto">
-              {type === 'phase' && onViewPhaseDetails && (
+            {type === 'phase' && onViewPhaseDetails && (
+              <div className="ml-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -381,8 +480,10 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                 >
                   View Details
                 </Button>
-              )}
-              {(type === 'task' || type === 'phase-task') && onViewTaskDetails && (
+              </div>
+            )}
+            {(type === 'task' || type === 'phase-task') && onViewTaskDetails && (
+              <div className="ml-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -395,8 +496,10 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                 >
                   View Details
                 </Button>
-              )}
-              {type === 'subtask' && onViewSubTaskDetails && (
+              </div>
+            )}
+            {type === 'subtask' && onViewSubTaskDetails && (
+              <div className="ml-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -409,15 +512,15 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                 >
                   View Details
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   };
 
-  if (phasesLoading || tasksLoading || subtasksLoading) {
+  if (phasesLoading || tasksLoading || subtasksLoading || toDosLoading || subtaskToDosLoading || taskUsersLoading || subtaskUsersLoading) {
     return (
       <div className="space-y-4">
         <div className="animate-pulse bg-gray-200 h-20 rounded-lg"></div>
@@ -466,10 +569,11 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
       <div className="bg-white border border-gray-200 rounded-lg">
         {/* Header Row */}
         <div className="bg-gray-50 px-6 py-3 border-b border-gray-200 grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
-          <div className="col-span-5">Task / Phase</div>
+          <div className="col-span-4">Task / Phase</div>
           <div className="col-span-2 text-center">Status</div>
           <div className="col-span-2 text-center">Priority</div>
-          <div className="col-span-3 text-left">Progress</div>
+          <div className="col-span-2 text-center">Assign to</div>
+          <div className="col-span-2 text-left">Progress</div>
         </div>
 
         <div className="divide-y divide-gray-100">
