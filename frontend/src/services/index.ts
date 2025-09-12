@@ -29,7 +29,13 @@ export {
 
 export {
   useUsers,
-  useCurrentUser
+  useCurrentUser,
+  useCurrentUserProfile,
+  useUpdateUserProfile,
+  useChangePassword,
+  useUploadUserImage,
+  useUserRoles,
+  useUserPermissions
 } from './userService';
 
 export {

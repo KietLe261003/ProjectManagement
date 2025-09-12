@@ -1,6 +1,6 @@
 import { useAllTaskOfTeam } from '@/services';
 import { getStatusColor } from '@/utils/color';
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 interface LeaderTasksViewProps {
   teamDataError: any;
@@ -20,6 +20,79 @@ const LeaderTasksView: React.FC<LeaderTasksViewProps> = ({
   handleTaskClick,
 }) => {
   const status = useAllTaskOfTeam();
+  
+  // States for user search and pagination
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [currentUserPage, setCurrentUserPage] = useState(1);
+  const [usersPerPage] = useState(5);
+  
+  // States for task search and filtering
+  const [taskSearchTerm, setTaskSearchTerm] = useState('');
+  const [taskStatusFilter, setTaskStatusFilter] = useState('');
+  const [taskTypeFilter, setTaskTypeFilter] = useState('');
+  const [currentTaskPage, setCurrentTaskPage] = useState(1);
+  const [tasksPerPage] = useState(10);
+  
+  // Filter and paginate users
+  const filteredUsers = useMemo(() => {
+    return teamMembersData.filter(member =>
+      member.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      member.id.toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
+  }, [teamMembersData, userSearchTerm]);
+  
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentUserPage - 1) * usersPerPage;
+    return filteredUsers.slice(startIndex, startIndex + usersPerPage);
+  }, [filteredUsers, currentUserPage, usersPerPage]);
+  
+  const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
+  
+  // Filter and paginate tasks for selected member
+  const filteredTasks = useMemo(() => {
+    if (!selectedMember) return [];
+    
+    const member = teamMembersData.find((m) => m.id === selectedMember);
+    if (!member) return [];
+    
+    return member.tasks.filter((task: any) => {
+      const matchesSearch = task.title.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+                           task.description.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+                           task.project.toLowerCase().includes(taskSearchTerm.toLowerCase());
+      
+      const matchesStatus = taskStatusFilter === '' || task.status === taskStatusFilter;
+      const matchesType = taskTypeFilter === '' || task.type === taskTypeFilter;
+      
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [selectedMember, teamMembersData, taskSearchTerm, taskStatusFilter, taskTypeFilter]);
+  
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (currentTaskPage - 1) * tasksPerPage;
+    return filteredTasks.slice(startIndex, startIndex + tasksPerPage);
+  }, [filteredTasks, currentTaskPage, tasksPerPage]);
+  
+  const totalTaskPages = Math.ceil(filteredTasks.length / tasksPerPage);
+  
+  // Reset task pagination when filters change
+  React.useEffect(() => {
+    setCurrentTaskPage(1);
+  }, [taskSearchTerm, taskStatusFilter, taskTypeFilter, selectedMember]);
+  
+  // Reset user pagination when search changes
+  React.useEffect(() => {
+    setCurrentUserPage(1);
+  }, [userSearchTerm]);
+  
+  // Helper function to set current user page
+  const setCurrentUserPageSafe = (page: number) => {
+    setCurrentUserPage(Math.max(1, Math.min(page, totalUserPages)));
+  };
+  
+  // Helper function to set current task page
+  const setCurrentTaskPageSafe = (page: number) => {
+    setCurrentTaskPage(Math.max(1, Math.min(page, totalTaskPages)));
+  };
   return (
     <div className="space-y-8">
       {/* Dashboard tổng quan */}
@@ -68,33 +141,77 @@ const LeaderTasksView: React.FC<LeaderTasksViewProps> = ({
           </div>
         )}
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-4 gap-5 items-start">
           {/* Cột danh sách thành viên */}
           <div className="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 mb-4 px-2">Thành viên nhóm ({teamMembersData.length})</h3>
-            <ul className="space-y-2">
-              {teamMembersData.map((member) => (
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-800">Thành viên nhóm ({filteredUsers.length})</h3>
+            </div>
+            
+            {/* User Search */}
+            <div className="mb-4">
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm thành viên..."
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                />
+              </div>
+            </div>
+            
+            {/* User List */}
+            <ul className="space-y-2 mb-4">
+              {paginatedUsers.map((member) => (
                 <li
                   key={member.id}
                   onClick={() => setSelectedMember(member.id)}
                   className={`member-item p-3 border rounded-lg hover:bg-slate-100 cursor-pointer transition-all ${
-                    selectedMember === member.id ? 'active' : 'border-transparent'
+                    selectedMember === member.id ? 'active border-indigo-500 bg-indigo-50' : 'border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <img className="h-10 w-10 rounded-full" src={member.avatar} alt={member.name} />
-                    <div>
-                      <p className="font-semibold text-slate-900">{member.name}</p>
+                    <img className="h-10 w-10 rounded-full object-cover" src={member.avatar} alt={member.name} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-900 truncate">{member.name}</p>
                       <p className="text-sm text-slate-500">{member.taskCount} công việc</p>
+                      <p className="text-xs text-slate-400">{member.role}</p>
                     </div>
                   </div>
                 </li>
               ))}
             </ul>
+            
+            {/* User Pagination */}
+            {totalUserPages > 1 && (
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setCurrentUserPageSafe(currentUserPage - 1)}
+                  disabled={currentUserPage === 1}
+                  className="px-3 py-1 text-sm bg-slate-100 text-slate-700 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Trước
+                </button>
+                <span className="text-xs text-slate-500">
+                  Trang {currentUserPage} / {totalUserPages}
+                </span>
+                <button
+                  onClick={() => setCurrentUserPageSafe(currentUserPage + 1)}
+                  disabled={currentUserPage === totalUserPages}
+                  className="px-3 py-1 text-sm bg-slate-100 text-slate-700 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Sau
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Cột chi tiết công việc của thành viên */}
-          <div className="lg:col-span-2 bg-white p-4 rounded-xl shadow-sm border border-slate-200 min-h-[300px]">
+          <div className="lg:col-span-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 min-h-[300px]">
             {selectedMember ? (
               (() => {
                 const member = teamMembersData.find((m) => m.id === selectedMember);
@@ -107,7 +224,67 @@ const LeaderTasksView: React.FC<LeaderTasksViewProps> = ({
 
                 return (
                   <div>
-                    <h3 className="font-bold text-slate-800 mb-4">Công việc của {member.name}</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-slate-800">Công việc của {member.name}</h3>
+                      <span className="text-sm text-slate-500">({filteredTasks.length} công việc)</span>
+                    </div>
+                    
+                    {/* Task Search and Filters */}
+                    <div className="mb-6 space-y-4">
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm công việc..."
+                          value={taskSearchTerm}
+                          onChange={(e) => setTaskSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        />
+                      </div>
+                      
+                      {/* Filters */}
+                      <div className="flex gap-4">
+                        <select
+                          value={taskStatusFilter}
+                          onChange={(e) => setTaskStatusFilter(e.target.value)}
+                          className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        >
+                          <option value="">Tất cả trạng thái</option>
+                          <option value="Open">Mở</option>
+                          <option value="Working">Đang làm</option>
+                          <option value="Pending Review">Chờ duyệt</option>
+                          <option value="Completed">Hoàn thành</option>
+                          <option value="Cancelled">Đã hủy</option>
+                        </select>
+                        
+                        <select
+                          value={taskTypeFilter}
+                          onChange={(e) => setTaskTypeFilter(e.target.value)}
+                          className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        >
+                          <option value="">Tất cả loại</option>
+                          <option value="Task">Task</option>
+                          <option value="SubTask">SubTask</option>
+                        </select>
+                        
+                        {(taskSearchTerm || taskStatusFilter || taskTypeFilter) && (
+                          <button
+                            onClick={() => {
+                              setTaskSearchTerm('');
+                              setTaskStatusFilter('');
+                              setTaskTypeFilter('');
+                            }}
+                            className="px-3 py-2 text-sm text-slate-600 hover:text-slate-800 underline"
+                          >
+                            Xóa bộ lọc
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm text-left">
                         <thead className="text-xs text-slate-500 uppercase bg-slate-100">
@@ -121,14 +298,17 @@ const LeaderTasksView: React.FC<LeaderTasksViewProps> = ({
                           </tr>
                         </thead>
                         <tbody>
-                          {member.tasks.length === 0 ? (
+                          {paginatedTasks.length === 0 ? (
                             <tr>
-                              <td colSpan={6} className="text-center py-4 text-slate-500">
-                                Thành viên này chưa có công việc nào.
+                              <td colSpan={6} className="text-center py-8 text-slate-500">
+                                {filteredTasks.length === 0 && member.tasks.length > 0 
+                                  ? "Không tìm thấy công việc phù hợp với bộ lọc."
+                                  : "Thành viên này chưa có công việc nào."
+                                }
                               </td>
                             </tr>
                           ) : (
-                            member.tasks.map((task: any) => (
+                            paginatedTasks.map((task: any) => (
                               <tr
                                 key={task.id}
                                 className="border-b border-slate-200 cursor-pointer hover:bg-slate-50"
@@ -141,7 +321,7 @@ const LeaderTasksView: React.FC<LeaderTasksViewProps> = ({
                                         <path fillRule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414L2.586 7l3.707-3.707a1 1 0 011.414 0z" clipRule="evenodd" />
                                       </svg>
                                     )}
-                                    {task.title}
+                                    <span className="truncate">{task.title}</span>
                                   </div>
                                   {task.parentTask && (
                                     <div className="text-xs text-slate-500 mt-1">↳ Subtask của: {task.parentTask}</div>
@@ -156,7 +336,7 @@ const LeaderTasksView: React.FC<LeaderTasksViewProps> = ({
                                     {task.type}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3">{task.project}</td>
+                                <td className="px-4 py-3 truncate">{task.project}</td>
                                 <td className="px-4 py-3">
                                   {task.taskProgress !== undefined ? (
                                     <div className="flex items-center gap-2">
@@ -169,7 +349,7 @@ const LeaderTasksView: React.FC<LeaderTasksViewProps> = ({
                                     <span className="text-xs text-slate-400">N/A</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3">{formatDate(task.dueDate).display}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">{formatDate(task.dueDate).display}</td>
                                 <td className="px-4 py-3">
                                   <span className={`status-badge ${getStatusColor(task.status)}`}>{task.status}</span>
                                 </td>
@@ -179,12 +359,45 @@ const LeaderTasksView: React.FC<LeaderTasksViewProps> = ({
                         </tbody>
                       </table>
                     </div>
+                    
+                    {/* Task Pagination */}
+                    {totalTaskPages > 1 && (
+                      <div className="mt-4 flex items-center justify-between">
+                        <div className="text-sm text-slate-500">
+                          Hiển thị {((currentTaskPage - 1) * tasksPerPage) + 1} - {Math.min(currentTaskPage * tasksPerPage, filteredTasks.length)} trong số {filteredTasks.length} công việc
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentTaskPageSafe(currentTaskPage - 1)}
+                            disabled={currentTaskPage === 1}
+                            className="px-3 py-1 text-sm bg-slate-100 text-slate-700 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Trước
+                          </button>
+                          <span className="text-sm text-slate-600">
+                            {currentTaskPage} / {totalTaskPages}
+                          </span>
+                          <button
+                            onClick={() => setCurrentTaskPageSafe(currentTaskPage + 1)}
+                            disabled={currentTaskPage === totalTaskPages}
+                            className="px-3 py-1 text-sm bg-slate-100 text-slate-700 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Sau
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()
             ) : (
               <div className="flex items-center justify-center h-full text-slate-500">
-                <p>Chọn một thành viên để xem công việc của họ.</p>
+                <div className="text-center">
+                  <svg className="mx-auto h-12 w-12 text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                  <p>Chọn một thành viên để xem công việc của họ.</p>
+                </div>
               </div>
             )}
           </div>

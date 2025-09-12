@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import {  useFrappeGetDoc, useFrappeGetDocList } from 'frappe-react-sdk';
+import {  useFrappeGetDoc, useFrappeGetDocList, useFrappeAuth } from 'frappe-react-sdk';
 import type { User } from '@/types/Core/User';
 import type { TaskItem } from '@/types';
 import { useAllTeamTasks } from '@/services/teamTaskService';
@@ -19,11 +19,15 @@ export interface TeamMemberData {
 
 export const useTeamData = ({team}:{team:string}) => {
   const {data: teamMember1,isLoading: isLoadingTeamMembers, error: teamMembersError }=useFrappeGetDoc<Team>('Team',team)
-  const teamMembers=teamMember1?.team_member
+  const teamMembers=teamMember1?.team_member || [];
+  
+  // Check if current user is Administrator
+  const { currentUser } = useFrappeAuth();
+  const isAdmin = currentUser === "Administrator";
+  
   // Fetch user data to get full names and avatars
   const { data: users, isLoading: isLoadingUsers, error: usersError } = useFrappeGetDocList<User>('User', {
     fields: ['name', 'full_name', 'user_image', 'first_name', 'last_name', 'email'],
-    filters: [['enabled', '=', 1], ['user_type', '=', 'System User']],
     limit: 0
   });
 
@@ -103,6 +107,27 @@ export const useTeamData = ({team}:{team:string}) => {
 
   // Process team members data with fallback for permission errors
   const teamMembersData = useMemo((): TeamMemberData[] => {
+    // If admin, return all system users
+    if (isAdmin && users) {
+      return users.map(user => {
+        const userTasks = allTransformedTasks.filter(task => task.assignee === user.name);
+        
+        // Generate avatar URL or use placeholder
+        const avatar = user.user_image || 
+          `https://placehold.co/40x40/e2e8f0/475569?text=${(user.first_name || user.full_name || 'U').charAt(0).toUpperCase()}`;
+        
+        return {
+          id: user.name || '',
+          name: user.full_name || user.first_name || user.name || 'Unknown User',
+          role: user.name === currentUser ? 'Leader' : 'Member', // Admin is leader, others are members
+          taskCount: userTasks.length,
+          avatar,
+          tasks: userTasks,
+          user
+        };
+      });
+    }
+
     // If we don't have team members data due to permission error, use alternative data
     if (!teamMembers || teamMembersError?.message?.includes('PermissionError')) {
       // Use simple team data from alternative service
@@ -161,8 +186,7 @@ export const useTeamData = ({team}:{team:string}) => {
         user
       };
     });
-  }, [teamMembers, users, allTransformedTasks, teamMembersError, simpleTeamData]);
-
+  }, [teamMembers, users, allTransformedTasks, teamMembersError, simpleTeamData, isAdmin, currentUser]);
   return {
     teamMembersData,
     allTransformedTasks,

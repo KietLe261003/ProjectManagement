@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-11 13:07:15.273499",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "phase_section",
+  "phase"
+ ],
+ "fields": [
+  {
+   "fieldname": "phase",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Phase_Link",
+   "options": "project_phase",
+   "reqd": 1
+  },
+  {
+   "fieldname": "phase_section",
+   "fieldtype": "Section Break",
+   "label": "Phase"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-11 14:12:42.936763",
+ "modified_by": "Administrator",
+ "module": "Todo",
+ "name": "ProjectRDTemplatePhase",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

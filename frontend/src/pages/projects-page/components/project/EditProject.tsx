@@ -67,6 +67,7 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
       status: 'Open',
       priority: 'Medium',
       department: '',
+      team:'',
       company: '',
       cost_center: '',
       expected_start_date: '',
@@ -85,6 +86,7 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
         status: project.status || 'Open',
         priority: project.priority || 'Medium',
         department: project.department || '',
+        team: project.team || '',
         company: project.company || '',
         cost_center: project.cost_center || '',
         expected_start_date: project.expected_start_date ? project.expected_start_date.split(' ')[0] : '',
@@ -152,6 +154,7 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
         status: project.status || 'Open',
         priority: project.priority || 'Medium',
         department: project.department || '',
+        team: project.team || '',
         company: project.company || '',
         cost_center: project.cost_center || '',
         expected_start_date: project.expected_start_date ? project.expected_start_date.split(' ')[0] : '',
@@ -264,19 +267,19 @@ const EditProject: React.FC<EditProjectProps> = ({ project, isOpen, onClose, onS
             </div>
           </div>
 
-          {/* Department and Company */}
+          {/* Team and Company */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label>Department</Label>
+              <Label>Team</Label>
               <Controller
-                name="department"
+                name="team"
                 control={control}
                 render={({ field }) => (
                   <Combobox
-                    doctype="Department"
+                    doctype="Team"
                     value={field.value || ""}
                     onChange={field.onChange}
-                    placeholder="Select department..."
+                    placeholder="Select team..."
                     className="w-full"
                   />
                 )}

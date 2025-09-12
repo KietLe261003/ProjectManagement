@@ -7,13 +7,14 @@ import "./TasksPage.css";
 import HeaderTask from "./components/HeaderTask";
 import UserTasksView from './components/UserTasksView';
 import LeaderTasksView from './components/LeaderTasksView';
+import AdminTasksView from './components/AdminTasksView';
 import ErrorLoading from "@/components/ErrorLoading";
-import {  useFrappeGetDocList } from "frappe-react-sdk";
+import {  useFrappeAuth, useFrappeGetDocList } from "frappe-react-sdk";
 import type { Team } from "@/types/Todo/Team";
 
 
 export const TasksPage: React.FC = () => {
-  const [currentView, setCurrentView] = React.useState<"user" | "leader">(
+  const [currentView, setCurrentView] = React.useState<"user" | "leader" | "admin">(
     "user"
   );
   const [activeTab, setActiveTab] = React.useState<
@@ -22,7 +23,7 @@ export const TasksPage: React.FC = () => {
   const [selectedMember, setSelectedMember] = React.useState<string | null>(
     null
   );
-
+  const isAdmin = useFrappeAuth().currentUser === "Administrator";
   // Modal state for editing tasks/subtasks
   const [editModalOpen, setEditModalOpen] = React.useState(false);
   const [selectedTaskForEdit, setSelectedTaskForEdit] =
@@ -37,10 +38,12 @@ export const TasksPage: React.FC = () => {
   const role = teams && teams.length > 0 ? "Leader" : "Member";
   // Set initial view based on user role
   React.useEffect(() => {
-    if (role === "Leader") {
+    if (isAdmin) {
+      setCurrentView("admin");
+    } else if (role === "Leader") {
       setCurrentView("leader");
     }
-  }, [role]);
+  }, [role, isAdmin]);
   // Transform tasks and subtasks to match the expected TaskItem structure
   const transformedTasks = React.useMemo((): TaskItem[] => {
     const taskItems: TaskItem[] = [];
@@ -102,6 +105,28 @@ export const TasksPage: React.FC = () => {
     teamMembersData,
     error: teamDataError,
   } = useTeamData({team:teams && teams.length > 0 ? teams[0].name : ''});
+
+  // For admin, get all users in the system
+  const { data: allUsers } = useFrappeGetDocList('User', {
+    fields: ['name', 'full_name', 'first_name', 'last_name'],
+    filters: [['enabled', '=', 1]],
+    limit: 0
+  });
+
+  // Prepare members data for admin view
+  const adminMembersData = React.useMemo(() => {
+    if (!isAdmin || !allUsers) return teamMembersData;
+    
+    return allUsers.map(user => ({
+      id: user.name,
+      name: user.full_name || user.first_name || user.name,
+      role: 'Member' as const,
+      taskCount: 0,
+      avatar: '',
+      tasks: [],
+      user: user
+    }));
+  }, [isAdmin, allUsers, teamMembersData]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -172,6 +197,18 @@ export const TasksPage: React.FC = () => {
             <LeaderTasksView
               teamDataError={teamDataError}
               teamMembersData={teamMembersData}
+              selectedMember={selectedMember}
+              setSelectedMember={setSelectedMember}
+              formatDate={formatDate}
+              handleTaskClick={handleTaskClick}
+            />
+          )}
+
+          {/* GIAO DIỆN ADMIN */}
+          {currentView === 'admin' && isAdmin && (
+            <AdminTasksView
+              teamDataError={teamDataError}
+              teamMembersData={adminMembersData}
               selectedMember={selectedMember}
               setSelectedMember={setSelectedMember}
               formatDate={formatDate}

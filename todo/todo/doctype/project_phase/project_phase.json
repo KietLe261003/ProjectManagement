@@ -16,13 +16,17 @@
   "details",
   "costing",
   "project",
-  "tasks"
+  "tasks",
+  "documents",
+  "gate"
  ],
  "fields": [
   {
    "fieldname": "subject",
    "fieldtype": "Data",
-   "label": "Subject"
+   "in_list_view": 1,
+   "label": "Subject",
+   "reqd": 1
   },
   {
    "fieldname": "status",
@@ -78,12 +82,24 @@
    "fieldtype": "Table",
    "label": "Tasks",
    "options": "Project Phase Task"
+  },
+  {
+   "fieldname": "documents",
+   "fieldtype": "Table",
+   "label": "Documents",
+   "options": "PhaseDocument"
+  },
+  {
+   "fieldname": "gate",
+   "fieldtype": "Link",
+   "label": "Gate",
+   "options": "PhaseGate"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-13 13:48:45.332541",
+ "modified": "2025-09-11 14:11:57.877198",
  "modified_by": "Administrator",
  "module": "Todo",
  "name": "project_phase",
