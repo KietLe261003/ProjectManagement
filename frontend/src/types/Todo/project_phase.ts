@@ -1,4 +1,5 @@
 import type { ProjectPhaseTask } from './ProjectPhaseTask'
+import type { PhaseDocument } from './PhaseDocument'
 
 export interface project_phase{
 	name: string
@@ -12,7 +13,7 @@ export interface project_phase{
 	parenttype?: string
 	idx?: number
 	/**	Subject : Data	*/
-	subject?: string
+	subject: string
 	/**	Status : Select	*/
 	status?: "Open" | "Working" | "Completed"
 	/**	Priority : Select	*/
@@ -33,4 +34,8 @@ export interface project_phase{
 	project?: string
 	/**	Tasks : Table - Project Phase Task	*/
 	tasks?: ProjectPhaseTask[]
+	/**	Documents : Table - PhaseDocument	*/
+	documents?: PhaseDocument[]
+	/**	Gate : Link - PhaseGate	*/
+	gate?: string
 }
