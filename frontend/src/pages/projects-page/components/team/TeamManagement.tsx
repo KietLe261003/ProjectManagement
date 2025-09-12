@@ -6,13 +6,13 @@ import {
   Users, 
   Crown, 
   Trash2, 
-  Edit, 
   Search,
   Filter,
   UserPlus
 } from "lucide-react"
 
 import { AddTeamMemberDialog } from "../project/AddTeamMemberDialog"
+import { useFrappeGetDoc } from 'frappe-react-sdk'
 
 interface TeamMember {
   user: string
@@ -51,17 +51,14 @@ export function TeamManagement({
   loadingUsers,
   onRefreshUsers,
   onRemoveMember,
-  isCurrentUserOwner,
-  ownerData,
-  ownerLoading,
-  ownerError,
-  editOwnerForm,
-  setShowEditOwnerDialog
 }: TeamManagementProps) {
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
-
+  const { data: infoOwner, error, isLoading } = useFrappeGetDoc(
+    'User',     // doctype
+    project.owner      // name trong User doctype thường chính là email
+  )
   // Filter and search team members
   const filteredMembers = projectUsers?.filter(member => {
     const matchesSearch = !searchQuery || 
@@ -107,8 +104,8 @@ export function TeamManagement({
               <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
                 Project Owner
               </p>
-              <p className="text-2xl font-bold text-amber-600 mt-2">
-                1
+              <p className=" font-bold text-amber-600 mt-2">
+                {infoOwner?.full_name || project.owner || "N/A"}
               </p>
               <p className="text-sm text-slate-600 mt-1">Active</p>
             </div>
@@ -170,97 +167,6 @@ export function TeamManagement({
           </div>
         </div>
       </div>
-
-      {/* Project Owner Section - Enhanced */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-        <div className="px-8 py-6 border-b border-slate-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-              <div className="h-10 w-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                <Crown className="h-6 w-6 text-amber-600" />
-              </div>
-              Project Owner
-            </h3>
-            {isCurrentUserOwner() && (
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => {
-                  editOwnerForm.reset({
-                    owner: project?.owner || "",
-                  });
-                  setShowEditOwnerDialog(true);
-                }}
-                className="border-slate-300 text-slate-700 hover:bg-slate-50"
-              >
-                <Edit className="h-5 w-5 mr-2" />
-                Change Owner
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="p-8">
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <div className="h-16 w-16 rounded-xl bg-slate-100 flex items-center justify-center shadow-sm border border-slate-200">
-                {ownerData?.user_image ? (
-                  <img
-                    src={ownerData.user_image}
-                    alt={ownerData?.full_name || "Owner"}
-                    className="h-full w-full object-cover rounded-xl"
-                  />
-                ) : (
-                  <span className="text-xl font-bold text-slate-600">
-                    {(
-                      ownerData?.full_name ||
-                      project?.owner ||
-                      "O"
-                    )
-                      .charAt(0)
-                      .toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white">
-                <Crown className="h-3 w-3 text-white" />
-              </div>
-            </div>
-            <div className="flex-1">
-              <h4 className="text-xl font-bold text-slate-900 mb-1">
-                {ownerLoading
-                  ? "Loading..."
-                  : ownerData?.full_name ||
-                    project?.owner ||
-                    "No Owner"}
-              </h4>
-              <p className="text-slate-600 mb-3">
-                {ownerLoading
-                  ? "Loading email..."
-                  : ownerData?.email ||
-                    project?.owner ||
-                    "No email"}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex px-3 py-1 text-sm font-medium bg-amber-100 text-amber-800 rounded-full border border-amber-200">
-                  👑 Project Owner
-                </span>
-                {ownerData?.designation && (
-                  <span className="inline-flex px-3 py-1 text-sm font-medium bg-slate-100 text-slate-700 rounded-full border border-slate-200">
-                    {ownerData.designation}
-                  </span>
-                )}
-                {ownerError && (
-                  <span className="inline-flex px-3 py-1 text-sm font-medium bg-red-100 text-red-700 rounded-full border border-red-200">
-                    ⚠️ Error loading details
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Team Members Section - Enhanced */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <div className="px-8 py-6 border-b border-slate-200">

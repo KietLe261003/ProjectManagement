@@ -22,6 +22,7 @@ export const ProjectDetailPage: React.FC = () => {
       shouldRetryOnError: true,
     }
   );
+  
 
   const handleBack = () => {
     navigate('/projects');
