@@ -42,7 +42,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
 
   // Use auto-update hook for realtime phase progress updates
   usePhaseProgressAutoUpdate(projectName, () => {
-    console.log('Phase progress updated, refreshing UI...');
     mutatePhases();
   });
 
@@ -207,7 +206,6 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('Tab became visible, refreshing all data (phases, tasks, subtasks, todos)...');
         mutatePhases();
         mutateTasks();
         mutateSubtasks();
@@ -285,8 +283,8 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
       }
     };
 
-    // Handle double click for view details
-    const handleDoubleClick = (e: React.MouseEvent) => {
+    // Handle click for view details (changed from double click)
+    const handleViewDetailsClick = (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       
@@ -307,6 +305,13 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
       if (hasChildren && onToggle) {
         onToggle();
       }
+    };
+
+    // Handle double click for view details
+    const handleDoubleClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleViewDetailsClick(e);
     };
 
     // Create background color based on type for better visual hierarchy
@@ -452,7 +457,7 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
           </div>
           
           {/* Progress Column - Always aligned, hidden for subtasks */}
-          <div className="col-span-2 flex items-center justify-start space-x-2">
+          <div className="col-span-1 flex items-center justify-start space-x-2">
             {type !== 'subtask' && (
               <>
                 <div className={`${type === 'phase' ? 'w-16' : 'w-12'} bg-gray-200 rounded-full h-2`}>
@@ -464,56 +469,21 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
                 <span className="text-sm text-gray-600 w-10 text-left flex-shrink-0">{progress}%</span>
               </>
             )}
-            
-            {/* View Details buttons - positioned consistently for all types */}
-            {type === 'phase' && onViewPhaseDetails && (
-              <div className="ml-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onViewPhaseDetails(item);
-                  }}
-                  className="h-7 px-2 text-xs"
-                >
-                  View Details
-                </Button>
-              </div>
-            )}
-            {(type === 'task' || type === 'phase-task') && onViewTaskDetails && (
-              <div className="ml-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onViewTaskDetails(item);
-                  }}
-                  className="h-7 px-2 text-xs"
-                >
-                  View Details
-                </Button>
-              </div>
-            )}
-            {type === 'subtask' && onViewSubTaskDetails && (
-              <div className="ml-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onViewSubTaskDetails(item);
-                  }}
-                  className="h-7 px-2 text-xs"
-                >
-                  View Details
-                </Button>
-              </div>
-            )}
+          </div>
+          
+          {/* Actions Column */}
+          <div className="col-span-1 text-center">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewDetailsClick(e);
+              }}
+              className="text-xs px-2 py-1 h-6"
+            >
+              View Details
+            </Button>
           </div>
         </div>
       </div>
@@ -573,7 +543,8 @@ export const ProjectTaskManagement: React.FC<ProjectTaskManagementProps> = ({
           <div className="col-span-2 text-center">Status</div>
           <div className="col-span-2 text-center">Priority</div>
           <div className="col-span-2 text-center">Assign to</div>
-          <div className="col-span-2 text-left">Progress</div>
+          <div className="col-span-1 text-left">Progress</div>
+          <div className="col-span-1 text-center">Actions</div>
         </div>
 
         <div className="divide-y divide-gray-100">

@@ -3,8 +3,6 @@ import {
   Calendar,
   DollarSign,
   Users,
-  Crown,
-  Plus,
   Edit,
   Trash2,
   BookOpen,
@@ -26,6 +24,7 @@ import { ProjectTaskManagement } from "../ProjectTaskManagement";
 import { PhaseDetails } from "../phase/PhaseDetails";
 import { TaskDetails } from "../task/TaskDetails";
 import { SubTaskDetails } from "../subtask/SubTaskDetails";
+import { TeamManagement } from "../team/TeamManagement";
 import EditProject from "./EditProject";
 import DeleteProject from "./DeleteProject";
 import { AddTeamMemberDialog } from "./AddTeamMemberDialog";
@@ -368,7 +367,6 @@ export function DetailProject({
 
   // Use fullProjectData if available, fallback to project prop
   const currentProject = fullProjectData || project;
-
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Project Header - UAV Style */}
@@ -1119,340 +1117,23 @@ export function DetailProject({
             )}
 
             {activeTab === "team" && (
-              <div className="space-y-8">
-                {/* Team Overview Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                          Total Members
-                        </p>
-                        <p className="text-3xl font-bold text-slate-900 mt-2">
-                          {(projectUsers?.length || 0) + 1}
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">
-                          Including owner
-                        </p>
-                      </div>
-                      <div className="h-14 w-14 bg-slate-100 rounded-xl flex items-center justify-center">
-                        <Users className="w-7 h-7 text-slate-600" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                          Project Owner
-                        </p>
-                        <p className="text-2xl font-bold text-amber-600 mt-2">
-                          1
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">Active</p>
-                      </div>
-                      <div className="h-14 w-14 bg-amber-50 rounded-xl flex items-center justify-center">
-                        <Crown className="w-7 h-7 text-amber-600" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                          Team Members
-                        </p>
-                        <p className="text-3xl font-bold text-slate-900 mt-2">
-                          {projectUsers?.length || 0}
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">
-                          Contributors
-                        </p>
-                      </div>
-                      <div className="h-14 w-14 bg-slate-100 rounded-xl flex items-center justify-center">
-                        <svg
-                          className="w-7 h-7 text-slate-600"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                          Progress
-                        </p>
-                        <p className="text-3xl font-bold text-emerald-600 mt-2">
-                          {project?.percent_complete || 0}%
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">Complete</p>
-                      </div>
-                      <div className="h-14 w-14 bg-emerald-50 rounded-xl flex items-center justify-center">
-                        <svg
-                          className="w-7 h-7 text-emerald-600"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Project Owner Section - Enhanced */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                  <div className="px-8 py-6 border-b border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                        <div className="h-10 w-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                          <Crown className="h-6 w-6 text-amber-600" />
-                        </div>
-                        Project Owner
-                      </h3>
-                      {isCurrentUserOwner() && (
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          onClick={() => {
-                            editOwnerForm.reset({
-                              owner: project?.owner || "",
-                            });
-                            setShowEditOwnerDialog(true);
-                          }}
-                          className="border-slate-300 text-slate-700 hover:bg-slate-50"
-                        >
-                          <Edit className="h-5 w-5 mr-2" />
-                          Change Owner
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-8">
-                    <div className="flex items-center gap-6">
-                      <div className="relative">
-                        <div className="h-16 w-16 rounded-xl bg-slate-100 flex items-center justify-center shadow-sm border border-slate-200">
-                          {ownerData?.user_image ? (
-                            <img
-                              src={ownerData.user_image}
-                              alt={ownerData?.full_name || "Owner"}
-                              className="h-full w-full object-cover rounded-xl"
-                            />
-                          ) : (
-                            <span className="text-xl font-bold text-slate-600">
-                              {(
-                                ownerData?.full_name ||
-                                currentProject?.owner ||
-                                "O"
-                              )
-                                .charAt(0)
-                                .toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-amber-500 rounded-full flex items-center justify-center border-2 border-white">
-                          <Crown className="h-3 w-3 text-white" />
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-xl font-bold text-slate-900 mb-1">
-                          {ownerLoading
-                            ? "Loading..."
-                            : ownerData?.full_name ||
-                              currentProject?.owner ||
-                              "No Owner"}
-                        </h4>
-                        <p className="text-slate-600 mb-3">
-                          {ownerLoading
-                            ? "Loading email..."
-                            : ownerData?.email ||
-                              currentProject?.owner ||
-                              "No email"}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="inline-flex px-3 py-1 text-sm font-medium bg-amber-100 text-amber-800 rounded-full border border-amber-200">
-                            👑 Project Owner
-                          </span>
-                          {ownerData?.designation && (
-                            <span className="inline-flex px-3 py-1 text-sm font-medium bg-slate-100 text-slate-700 rounded-full border border-slate-200">
-                              {ownerData.designation}
-                            </span>
-                          )}
-                          {ownerError && (
-                            <span className="inline-flex px-3 py-1 text-sm font-medium bg-red-100 text-red-700 rounded-full border border-red-200">
-                              ⚠️ Error loading details
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Team Members Section - Enhanced */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                  <div className="px-8 py-6 border-b border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                        <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                          <Users className="h-6 w-6 text-slate-600" />
-                        </div>
-                        Team Members
-                        <span className="inline-flex px-3 py-1 text-sm font-medium bg-slate-100 text-slate-700 rounded-full border border-slate-200">
-                          {projectUsers?.length || 0} members
-                        </span>
-                      </h3>
-                      <Button
-                        size="lg"
-                        className="bg-slate-800 hover:bg-slate-900"
-                        onClick={() => setShowAddMemberDialog(true)}
-                      >
-                        <Plus className="h-5 w-5 mr-2" />
-                        Add Member
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="p-8">
-                    {loadingUsers ? (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-300 border-t-slate-600 mx-auto mb-4"></div>
-                          <p className="text-lg font-medium text-slate-600">
-                            Loading team members...
-                          </p>
-                          <p className="text-sm text-slate-500 mt-2">
-                            Please wait while we fetch the team data
-                          </p>
-                        </div>
-                      </div>
-                    ) : projectUsers && projectUsers.length > 0 ? (
-                      <div className="grid gap-4">
-                        {projectUsers.map((member: any, index: number) => (
-                          <div
-                            key={member.user || index}
-                            className="flex items-center justify-between p-6 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 hover:border-slate-300 transition-all duration-200"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="h-14 w-14 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden shadow-sm border border-slate-200">
-                                {member.image ? (
-                                  <img
-                                    src={member.image}
-                                    alt={member.full_name || member.user}
-                                    className="h-full w-full object-cover rounded-xl"
-                                  />
-                                ) : (
-                                  <span className="text-lg font-semibold text-slate-600">
-                                    {(member.full_name || member.user || "U")
-                                      .charAt(0)
-                                      .toUpperCase()}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="text-lg font-semibold text-slate-900 mb-1">
-                                  {member.full_name ||
-                                    member.user ||
-                                    "Unknown User"}
-                                </h4>
-                                <p className="text-slate-600 mb-2">
-                                  {member.email || member.user || "No email"}
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  <span className="inline-flex px-2 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded-md border border-slate-200">
-                                    👥 Team Member
-                                  </span>
-                                  {member.project_status && (
-                                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-md border border-emerald-200">
-                                      📊 {member.project_status}
-                                    </span>
-                                  )}
-                                  {member.view_attachments && (
-                                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded-md border border-slate-200">
-                                      📎 File Access
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
-                                onClick={() => handleRemoveMember(member.user)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Remove
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-16">
-                        <div className="max-w-sm mx-auto">
-                          <div className="h-20 w-20 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-6 border border-slate-200">
-                            <Users className="h-10 w-10 text-slate-400" />
-                          </div>
-                          <h4 className="text-xl font-semibold text-slate-900 mb-3">
-                            No team members yet
-                          </h4>
-                          <p className="text-slate-600 text-base mb-6">
-                            Start building your team by adding members to
-                            collaborate on this project
-                          </p>
-                          <Button
-                            size="lg"
-                            className="bg-slate-800 hover:bg-slate-900"
-                            onClick={() => setShowAddMemberDialog(true)}
-                          >
-                            <Plus className="h-5 w-5 mr-2" />
-                            Add First Member
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <TeamManagement
+                project={project}
+                projectUsers={projectUsers}
+                loadingUsers={loadingUsers}
+                onRefreshUsers={refreshProject}
+                onRemoveMember={handleRemoveMember}
+                isCurrentUserOwner={isCurrentUserOwner}
+                ownerData={ownerData}
+                ownerLoading={ownerLoading}
+                ownerError={ownerError}
+                editOwnerForm={editOwnerForm}
+                setShowEditOwnerDialog={setShowEditOwnerDialog}
+              />
             )}
 
             {activeTab === "tasks" && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-green-50 to-emerald-100 px-8 py-6 border-b border-gray-200">
-                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <div className="h-10 w-10 bg-green-600 rounded-lg flex items-center justify-center">
-                      <svg
-                        className="h-6 w-6 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    Tasks & Phases Management
-                  </h3>
-                  <p className="text-gray-600 mt-2">
-                    Organize and track project phases, tasks, and subtasks
-                  </p>
-                </div>
                 <div className="p-8">
                   <ProjectTaskManagement
                     projectName={project.name}
@@ -1522,27 +1203,6 @@ export function DetailProject({
             )}
             {activeTab === "task-details" && selectedTask && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-orange-50 to-amber-100 px-8 py-6 border-b border-gray-200">
-                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <div className="h-10 w-10 bg-orange-600 rounded-lg flex items-center justify-center">
-                      <svg
-                        className="h-6 w-6 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    Task Details: {selectedTask.subject || selectedTask.name}
-                  </h3>
-                  <p className="text-gray-600 mt-2">
-                    Manage subtasks and track task progress
-                  </p>
-                </div>
                 <div className="p-8">
                   <TaskDetails
                     task={selectedTask}
