@@ -3,7 +3,7 @@ import { useForm, Controller } from "react-hook-form"
 import { useFrappePostCall } from "frappe-react-sdk"
 
 import { Button } from "@/components/ui/button"
-import { Combobox } from "@/components/input/Combobox"
+import { MultiCombobox } from "@/components/input/MultiCombobox"
 import { Label } from "@/components/ui/label"
 import {
   Dialog,
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 
 interface MemberFormData {
-  user: string
+  users: string[]
   view_attachments?: boolean
   hide_timesheets?: boolean
   project_status?: string
@@ -57,29 +57,65 @@ export function AddTeamMemberDialog({
   }
 
   const handleAddMember = async (data: MemberFormData) => {
-    if (!projectName) return
+    if (!projectName || !data.users || data.users.length === 0) return
 
     // Prevent double submission
     if (updatingProject) return
 
     setUpdatingProject(true)
     
+    let successCount = 0
+    let failedUsers: string[] = []
+    let emailErrors = false
+    
     try {
-      // Use custom API that doesn't send welcome email
-      const result = await addMemberCall({
-        project_name: projectName,
-        user: data.user,
-        view_attachments: data.view_attachments ? 1 : 0,
-        hide_timesheets: data.hide_timesheets ? 1 : 0,
-        project_status: data.project_status || 'Team Member'
-      })
+      // Add members one by one
+      for (const user of data.users) {
+        try {
+          // Use custom API that doesn't send welcome email
+          const result = await addMemberCall({
+            project_name: projectName,
+            user: user,
+            view_attachments: data.view_attachments ? 1 : 0,
+            hide_timesheets: data.hide_timesheets ? 1 : 0,
+            project_status: data.project_status || 'Team Member'
+          })
 
-      console.log('Member added successfully:', result)
-      
-      // Close dialog immediately and reset form
+          console.log(`Member ${user} added successfully:`, result)
+          successCount++
+
+        } catch (error) {
+          console.error(`Error adding member ${user}:`, error)
+          
+          // Handle different types of errors
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          const errorString = JSON.stringify(error)
+          
+          if (errorMessage.includes('Email Account') || 
+              errorMessage.includes('OutgoingEmailError') || 
+              errorMessage.includes('email') ||
+              errorMessage.includes('SMTP') ||
+              errorString.includes('OutgoingEmailError') ||
+              errorString.includes('Email Account')) {
+            
+            // Email error - member might still be added, just email failed
+            console.log(`Email error detected for ${user}, member likely added successfully`)
+            successCount++
+            emailErrors = true
+            
+          } else if (errorMessage.includes('DuplicateEntryError') || 
+                     errorMessage.includes('already exists')) {
+            // User already exists - not really a failure
+            console.log(`User ${user} already exists in project`)
+          } else {
+            // Real failure
+            failedUsers.push(user)
+          }
+        }
+      }
+
+      // Close dialog and reset form
       onClose()
-      
-      // Reset form in next tick to prevent UI flash
       setTimeout(() => {
         addMemberForm.reset()
         addMemberForm.clearErrors()
@@ -90,51 +126,22 @@ export function AddTeamMemberDialog({
         onSuccess()
       }, 1000)
 
-      // Show success message
-      alert('Member added successfully!')
+      // Show appropriate success/error message
+      if (successCount === data.users.length) {
+        if (emailErrors) {
+          alert(`All ${successCount} members added successfully! (Welcome emails could not be sent due to email configuration, but all members were added to the project)`)
+        } else {
+          alert(`All ${successCount} members added successfully!`)
+        }
+      } else if (successCount > 0) {
+        alert(`${successCount} out of ${data.users.length} members added successfully. ${failedUsers.length} failed: ${failedUsers.join(', ')}`)
+      } else {
+        alert(`Failed to add members: ${failedUsers.join(', ')}`)
+      }
 
     } catch (error) {
-      console.error('Error adding member:', error)
-
-      // Handle different types of errors
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      
-      // Check if it's an email-related error from the response
-      const errorString = JSON.stringify(error)
-      
-      if (errorMessage.includes('Email Account') || 
-          errorMessage.includes('OutgoingEmailError') || 
-          errorMessage.includes('email') ||
-          errorMessage.includes('SMTP') ||
-          errorString.includes('OutgoingEmailError') ||
-          errorString.includes('Email Account')) {
-        
-        // Email error - member might still be added, just email failed
-        console.log('Email error detected, member likely added successfully')
-        
-        // Close dialog and refresh to check
-        onClose()
-        setTimeout(() => {
-          addMemberForm.reset()
-          addMemberForm.clearErrors()
-        }, 0)
-        
-        setTimeout(() => {
-          onSuccess()
-          alert('Member added successfully! (Welcome email could not be sent due to email configuration, but the member was added to the project)')
-        }, 1000)
-        
-      } else if (errorMessage.includes('DuplicateEntryError') || 
-                 errorMessage.includes('already exists')) {
-        alert('This user is already a member of the project.')
-      } else if (errorMessage.includes('PermissionError') || 
-                 errorMessage.includes('Not permitted')) {
-        alert('You do not have permission to add members to this project.')
-      } else if (errorMessage.includes('ValidationError')) {
-        alert('Invalid data provided. Please check your inputs.')
-      } else {
-        alert('Failed to add member: ' + errorMessage)
-      }
+      console.error('Error in bulk add members:', error)
+      alert('Failed to add members: ' + (error instanceof Error ? error.message : String(error)))
     } finally {
       setUpdatingProject(false)
     }
@@ -155,33 +162,36 @@ export function AddTeamMemberDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Add Team Member</DialogTitle>
+            <DialogTitle>Add Team Members</DialogTitle>
             <DialogDescription>
-              Add a new member to the project team.
+              Add new members to the project team. You can select multiple users at once.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>User <span className="text-red-500">*</span></Label>
+              <Label>Users <span className="text-red-500">*</span></Label>
               <Controller
-                name="user"
+                name="users"
                 control={addMemberForm.control}
-                rules={{ required: "Please select a user" }}
+                rules={{ 
+                  required: "Please select at least one user",
+                  validate: (value) => value?.length > 0 || "Please select at least one user"
+                }}
                 render={({ field }) => (
-                  <Combobox
-                    key={`add-member-${isOpen ? 'open' : 'closed'}-${Date.now()}`} // Force re-render when dialog opens
+                  <MultiCombobox
+                    key={`add-members-${isOpen ? 'open' : 'closed'}-${Date.now()}`} // Force re-render when dialog opens
                     doctype="User"
-                    value={field.value || ""}
-                    onChange={(value) => {
-                      console.log('Combobox onChange:', value) // Debug log
+                    value={field.value || []}
+                    onChange={(value: string[]) => {
+                      console.log('MultiCombobox onChange:', value) // Debug log
                       field.onChange(value)
                       // Clear any previous errors when user selects a value
-                      if (value && addMemberForm.formState.errors.user) {
-                        addMemberForm.clearErrors("user")
+                      if (value?.length > 0 && addMemberForm.formState.errors.users) {
+                        addMemberForm.clearErrors("users")
                       }
                     }}
-                    placeholder={updatingProject ? "Please wait..." : "Select user..."}
+                    placeholder={updatingProject ? "Please wait..." : "Select users..."}
                     displayField="full_name"
                     valueField="name"
                     filters={[["enabled", "=", 1], ["user_type", "!=", "Website User"]]}
@@ -191,9 +201,9 @@ export function AddTeamMemberDialog({
                   />
                 )}
               />
-              {addMemberForm.formState.errors.user && (
+              {addMemberForm.formState.errors.users && (
                 <span className="text-red-500 text-sm">
-                  {addMemberForm.formState.errors.user.message}
+                  {addMemberForm.formState.errors.users.message}
                 </span>
               )}
             </div>
@@ -242,16 +252,16 @@ export function AddTeamMemberDialog({
             </Button>
             <Button
               type="submit"
-              disabled={updatingProject || !addMemberForm.watch('user')}
+              disabled={updatingProject || !addMemberForm.watch('users')?.length}
               className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
               {updatingProject ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Adding...
+                  Adding Members...
                 </>
               ) : (
-                "Add Member"
+                "Add Members"
               )}
             </Button>
           </DialogFooter>
