@@ -1,0 +1,53 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-11 10:15:34.696877",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "documentname",
+  "templatelink",
+  "fileupload",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "documentname",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "DocumentName",
+   "reqd": 1
+  },
+  {
+   "fieldname": "templatelink",
+   "fieldtype": "Attach",
+   "label": "TemplateLink",
+   "options": "URL"
+  },
+  {
+   "fieldname": "fileupload",
+   "fieldtype": "Attach",
+   "label": "FileUpLoad"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Tr\u1ed1ng\nNh\u00e1p\nCh\u1edd Duy\u1ec7t\n\u0110\u00e3 Duy\u1ec7t"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-11 10:29:50.420960",
+ "modified_by": "Administrator",
+ "module": "Todo",
+ "name": "PhaseDocument",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

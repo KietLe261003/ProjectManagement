@@ -44,7 +44,7 @@ export const Layout: React.FC = () => {
         
         <main className="flex-1 overflow-y-auto">
           <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto px-5">
               <Outlet />
             </div>
           </div>

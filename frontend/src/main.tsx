@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import { Dashboard } from './pages/dashboard-page'
 import { ProjectsPage } from './pages/projects-page/ProjectsPage.tsx'
+import { ProjectDetailPage } from './pages/projects-page/ProjectDetailPage.tsx'
 import { TasksPage } from './pages/tasks-page/TasksPage.tsx'
 import { DocumentsPage } from './pages/documents-page'
 import { BudgetPage } from './pages/budget-page'
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
       {
         path: "projects",
         element: <ProjectsPage />,
+      },
+      {
+        path: "projects/:projectId",
+        element: <ProjectDetailPage />,
       },
       {
         path: "tasks", 

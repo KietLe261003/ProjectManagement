@@ -10,14 +10,12 @@ interface ProjectActionsProps {
   project: Project;
   onProjectUpdated?: () => void;
   onProjectDeleted?: () => void;
-  onCloseDrawer?: () => void; // Add callback to close drawer
 }
 
 const ProjectActions: React.FC<ProjectActionsProps> = ({ 
   project, 
   onProjectUpdated, 
-  onProjectDeleted,
-  onCloseDrawer
+  onProjectDeleted
 }) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -44,10 +42,6 @@ const ProjectActions: React.FC<ProjectActionsProps> = ({
   const handleDeleteSuccess = () => {
     if (onProjectDeleted) {
       onProjectDeleted();
-    }
-    // Close drawer if it's open
-    if (onCloseDrawer) {
-      onCloseDrawer();
     }
   };
 

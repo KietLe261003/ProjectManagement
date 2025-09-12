@@ -1,7 +1,7 @@
 import type { Project } from '@/types/Projects/Project';
 import { formatCurrency } from '@/utils/formatCurrency';
 import React, { useState, useMemo } from 'react';
-import { DetailProject } from './DetailProject';
+import { useNavigate } from 'react-router-dom';
 import ProjectActions from './ProjectActions';
 import { mutate as globalMutate } from 'swr';
 
@@ -11,34 +11,20 @@ interface ProjectListViewCardProps {
 }
 
 const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onProjectsChange }) => {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const navigate = useNavigate();
   const [lastUpdatedProject, setLastUpdatedProject] = useState<string | null>(null);
 
   const handleProjectClick = (project: Project) => {
-    setSelectedProject(project);
-    setIsDrawerOpen(true);
-  };
-
-  const handleCloseDrawer = () => {
-    setIsDrawerOpen(false);
-    setSelectedProject(null);
+    navigate(`/projects/${project.name}`);
   };
 
   const handleProjectUpdated = () => {
-    if (selectedProject) {
-      setLastUpdatedProject(selectedProject.name);
-      // Clear the highlight after 5 seconds
-      setTimeout(() => {
-        setLastUpdatedProject(null);
-      }, 5000);
-    }
+    // Clear the highlight after 5 seconds
+    setTimeout(() => {
+      setLastUpdatedProject(null);
+    }, 5000);
     
     console.log('handleProjectUpdated called, about to refresh data...');
-    
-    // Close the drawer immediately
-    setIsDrawerOpen(false);
-    setSelectedProject(null);
     
     // Force invalidate all Project cache
     globalMutate(
@@ -197,7 +183,6 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
                     project={project}
                     onProjectUpdated={handleProjectUpdated}
                     onProjectDeleted={handleProjectDeleted}
-                    onCloseDrawer={handleCloseDrawer}
                   />
                 </td>
               </tr>
@@ -205,13 +190,6 @@ const ProjectListViewCard: React.FC<ProjectListViewCardProps> = ({ projects, onP
           </tbody>
         </table>
       </div>
-      
-      {/* DetailProject Drawer */}
-      <DetailProject 
-        project={selectedProject}
-        isOpen={isDrawerOpen}
-        onClose={handleCloseDrawer}
-      />
     </div>
   );
 };

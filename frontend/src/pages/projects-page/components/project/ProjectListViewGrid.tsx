@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Project } from '@/types/Projects/Project';
 import { formatCurrency } from '@/utils/formatCurrency';
-import { DetailProject } from './DetailProject';
 import ProjectActions from './ProjectActions';
 
 interface ProjectListViewGridProps {
@@ -10,17 +10,10 @@ interface ProjectListViewGridProps {
 }
 
 const ProjectListViewGrid: React.FC<ProjectListViewGridProps> = ({ projects, onProjectsChange }) => {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleProjectClick = (project: Project) => {
-    setSelectedProject(project);
-    setIsDrawerOpen(true);
-  };
-
-  const handleCloseDrawer = () => {
-    setIsDrawerOpen(false);
-    setSelectedProject(null);
+    navigate(`/projects/${project.name}`);
   };
 
   const getStatusColor = (status?: "Open" | "Completed" | "Cancelled") => {
@@ -68,7 +61,6 @@ const ProjectListViewGrid: React.FC<ProjectListViewGridProps> = ({ projects, onP
                     project={project}
                     onProjectUpdated={onProjectsChange}
                     onProjectDeleted={onProjectsChange}
-                    onCloseDrawer={handleCloseDrawer}
                   />
                 </div>
               </div>
@@ -97,13 +89,6 @@ const ProjectListViewGrid: React.FC<ProjectListViewGridProps> = ({ projects, onP
           </div>
         ))}
       </div>
-      
-      {/* DetailProject Drawer */}
-      <DetailProject 
-        project={selectedProject}
-        isOpen={isDrawerOpen}
-        onClose={handleCloseDrawer}
-      />
     </>
   );
 };
