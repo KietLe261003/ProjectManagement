@@ -9,6 +9,26 @@
     
     console.log('Access control script loaded for:', window.location.pathname);
     
+    // Function to check if user has specific role
+    function hasRole(roleName) {
+        try {
+            // Check user roles from frappe.session
+            if (frappe.session && frappe.session.user_roles) {
+                return frappe.session.user_roles.includes(roleName);
+            }
+            
+            // Fallback: check user document roles
+            if (frappe.user && frappe.user.has_role) {
+                return frappe.user.has_role(roleName);
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking user role:', error);
+            return false;
+        }
+    }
+    
     // Function to check user permissions
     function checkUserPermissions() {
         try {
@@ -20,6 +40,12 @@
                 // Allow Administrator to access /app
                 if (user === 'Administrator') {
                     console.log('Administrator access granted');
+                    return;
+                }
+                
+                // Allow users with Projects Manager role to access /app
+                if (hasRole('Projects Manager')) {
+                    console.log('Projects Manager access granted for user:', user);
                     return;
                 }
                 
@@ -36,7 +62,7 @@
                             <div style="text-align: center; padding: 20px;">
                                 <h2 style="color: #e74c3c; margin-bottom: 10px;">⚠️ Truy cập bị từ chối</h2>
                                 <p style="color: #666; margin-bottom: 15px;">Bạn không có quyền truy cập trang này.</p>
-                                <p style="color: #666; margin-bottom: 20px;">Chỉ Administrator mới được phép truy cập.</p>
+                                <p style="color: #666; margin-bottom: 20px;">Chỉ Administrator hoặc Projects Manager mới được phép truy cập.</p>
                                 <p style="color: #3498db;">Đang chuyển hướng về Todo App...</p>
                             </div>
                         </div>

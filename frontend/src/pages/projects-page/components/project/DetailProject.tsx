@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar,
   DollarSign,
@@ -151,28 +151,8 @@ export function DetailProject({
   const projectUsers = fullProjectData?.users || project?.users || [];
   const loadingUsers = loadingProject;
 
-  // NEW APPROACH: Display project progress with enhanced data
-  const calculatedProgress = useMemo(() => {
-    // Mock data for tasks and phases - in real app, these would come from API
-    const totalTasks = 15; // This would come from your tasks API
-    const completedTasks = Math.round((totalTasks * (fullProjectData?.percent_complete || project?.percent_complete || 0)) / 100);
-    
-    const phases = [
-      { name: "Planning", progress: 100 },
-      { name: "Development", progress: 75 },
-      { name: "Testing", progress: 30 },
-      { name: "Deployment", progress: 0 }
-    ];
-
-    return {
-      progress: fullProjectData?.percent_complete || project?.percent_complete || 0,
-      source: "project",
-      count: 1,
-      totalTasks,
-      completedTasks,
-      phases,
-    };
-  }, [fullProjectData?.percent_complete, project?.percent_complete, project?.name]);
+  // Get actual project progress from API
+  const projectProgress = fullProjectData?.percent_complete || project?.percent_complete || 0;
 
   // Function to refresh subtask data after update
   const handleRefreshSubTask = async () => {
@@ -480,7 +460,7 @@ export function DetailProject({
                 <div>
                   <p className="text-slate-300 text-sm font-medium">Progress</p>
                   <p className="text-3xl font-bold text-white">
-                    {calculatedProgress.progress}%
+                    {projectProgress}%
                   </p>
                 </div>
                 <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center">
@@ -500,7 +480,7 @@ export function DetailProject({
               <div className="mt-3 w-full bg-white/20 rounded-full h-2">
                 <div
                   className="bg-white h-2 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${calculatedProgress.progress}%` }}
+                  style={{ width: `${projectProgress}%` }}
                 />
               </div>
             </div>
@@ -664,19 +644,19 @@ export function DetailProject({
           <div className="space-y-8">
             {activeTab === "overview" && (
               <div className="space-y-8">
-                {/* Quick Stats Section */}
+                {/* Essential Project Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                          Total Tasks
+                          Progress
                         </p>
                         <p className="text-3xl font-bold text-slate-900 mt-2">
-                          {calculatedProgress.totalTasks}
+                          {projectProgress}%
                         </p>
                         <p className="text-sm text-emerald-600 mt-1">
-                          {calculatedProgress.completedTasks} completed
+                          Project completion
                         </p>
                       </div>
                       <div className="h-14 w-14 bg-slate-100 rounded-xl flex items-center justify-center">
@@ -687,7 +667,7 @@ export function DetailProject({
                         >
                           <path
                             fillRule="evenodd"
-                            d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                             clipRule="evenodd"
                           />
                         </svg>
@@ -699,7 +679,7 @@ export function DetailProject({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                          Team Members
+                          Team Size
                         </p>
                         <p className="text-3xl font-bold text-slate-900 mt-2">
                           {(projectUsers?.length || 0) + 1}
@@ -737,7 +717,7 @@ export function DetailProject({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-                          Time Left
+                          Days Left
                         </p>
                         <p className="text-3xl font-bold text-slate-900 mt-2">
                           {currentProject.expected_end_date
@@ -764,353 +744,222 @@ export function DetailProject({
                   </div>
                 </div>
 
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                  {/* Project Information - 2/3 width */}
-                  <div className="xl:col-span-2 space-y-8">
-                    {/* Project Details Card */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                      <div className="px-8 py-6 border-b border-slate-200">
-                        <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                          <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                            <BookOpen className="h-6 w-6 text-slate-600" />
-                          </div>
-                          Project Information
-                        </h3>
-                      </div>
-                      <div className="p-8 space-y-8">
+                {/* Main Content - Single Column Layout */}
+                <div className="space-y-8">
+                  {/* Project Information Card */}
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                    <div className="px-8 py-6 border-b border-slate-200">
+                      <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                        <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                          <BookOpen className="h-6 w-6 text-slate-600" />
+                        </div>
+                        Project Information
+                      </h3>
+                    </div>
+                    <div className="p-8 space-y-6">
+                      {/* Description */}
+                      {currentProject.description && (
                         <div>
                           <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
                             Description
                           </label>
                           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                             <p className="text-slate-900 leading-relaxed">
-                              {currentProject.description ||
-                                "No description provided for this project."}
+                              {currentProject.description}
                             </p>
                           </div>
                         </div>
+                      )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Project Dates */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {currentProject.expected_start_date && (
                           <div>
                             <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
                               Start Date
                             </label>
                             <div className="flex items-center space-x-3 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                               <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                <svg
-                                  className="w-4 h-4 text-emerald-600"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
+                                <Calendar className="w-4 h-4 text-emerald-600" />
                               </div>
                               <div>
                                 <p className="font-semibold text-slate-900">
-                                  {formatDate(
-                                    currentProject.expected_start_date
-                                  )}
-                                </p>
-                                <p className="text-sm text-emerald-600">
-                                  Project kickoff
+                                  {formatDate(currentProject.expected_start_date)}
                                 </p>
                               </div>
                             </div>
                           </div>
+                        )}
 
+                        {currentProject.expected_end_date && (
                           <div>
                             <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                              Target End Date
+                              End Date
                             </label>
                             <div className="flex items-center space-x-3 p-4 bg-red-50 rounded-lg border border-red-200">
                               <div className="h-8 w-8 bg-red-100 rounded-lg flex items-center justify-center">
-                                <svg
-                                  className="w-4 h-4 text-red-600"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
+                                <Calendar className="w-4 h-4 text-red-600" />
                               </div>
                               <div>
                                 <p className="font-semibold text-slate-900">
                                   {formatDate(currentProject.expected_end_date)}
                                 </p>
-                                <p className="text-sm text-red-600">
-                                  Delivery deadline
-                                </p>
                               </div>
                             </div>
                           </div>
-                        </div>
+                        )}
+                      </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Project Meta Information */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {currentProject.customer && (
                           <div>
                             <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
                               Customer
                             </label>
                             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                               <p className="text-slate-900 font-medium">
-                                {currentProject.customer || "Not assigned"}
+                                {currentProject.customer}
                               </p>
                             </div>
                           </div>
+                        )}
 
-                          {currentProject.project_type && (
-                            <div>
-                              <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                                Project Type
-                              </label>
-                              <div className="flex items-center px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-                                <div className="h-6 w-6 bg-slate-200 rounded-md flex items-center justify-center mr-3">
-                                  <svg
-                                    className="w-3 h-3 text-slate-600"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </div>
-                                <span className="text-slate-900 font-medium">
-                                  {currentProject.project_type}
-                                </span>
-                              </div>
+                        {currentProject.project_type && (
+                          <div>
+                            <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                              Project Type
+                            </label>
+                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                              <p className="text-slate-900 font-medium">
+                                {currentProject.project_type}
+                              </p>
                             </div>
-                          )}
+                          </div>
+                        )}
 
+                        {currentProject.priority && (
                           <div>
                             <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
                               Priority
                             </label>
                             <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
                               <p className="text-amber-900 font-medium">
-                                {currentProject.priority || "Medium"}
+                                {currentProject.priority}
                               </p>
                             </div>
                           </div>
-                        </div>
+                        )}
+                      </div>
 
-                        {/* Financial Section */}
+                      {/* Financial Information - Only if data exists */}
+                      {(currentProject.estimated_costing || 
+                        currentProject.total_sales_amount || 
+                        currentProject.total_costing_amount || 
+                        currentProject.total_billable_amount) && (
                         <div>
                           <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
                             Financial Overview
                           </label>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
-                              <p className="text-sm text-emerald-700 font-medium">
-                                Total Sales
-                              </p>
-                              <p className="text-lg font-bold text-emerald-900">
-                                {formatCurrency(
-                                  currentProject.total_sales_amount
-                                )}
-                              </p>
-                            </div>
-                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                              <p className="text-sm text-blue-700 font-medium">
-                                Total Cost
-                              </p>
-                              <p className="text-lg font-bold text-blue-900">
-                                {formatCurrency(
-                                  currentProject.total_costing_amount
-                                )}
-                              </p>
-                            </div>
-                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                              <p className="text-sm text-purple-700 font-medium">
-                                Billable
-                              </p>
-                              <p className="text-lg font-bold text-purple-900">
-                                {formatCurrency(
-                                  currentProject.total_billable_amount
-                                )}
-                              </p>
-                            </div>
-                            <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                              <p className="text-sm text-orange-700 font-medium">
-                                Gross Margin
-                              </p>
-                              <p className="text-lg font-bold text-orange-900">
-                                {formatCurrency(currentProject.gross_margin)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress Sidebar - 1/3 width */}
-                  <div className="space-y-6">
-                    {/* Progress Overview Card */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                      <div className="px-6 py-5 border-b border-slate-200">
-                        <h3 className="text-xl font-bold text-slate-900 flex items-center gap-3">
-                          <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                            <BarChart3 className="h-5 w-5 text-slate-600" />
-                          </div>
-                          Progress Overview
-                        </h3>
-                      </div>
-                      <div className="p-6 space-y-6">
-                        {/* Main Progress Circle */}
-                        <div className="text-center">
-                          <div className="relative inline-flex items-center justify-center">
-                            <div className="w-28 h-28">
-                              <svg
-                                className="w-28 h-28 transform -rotate-90"
-                                viewBox="0 0 100 100"
-                              >
-                                <circle
-                                  cx="50"
-                                  cy="50"
-                                  r="40"
-                                  stroke="currentColor"
-                                  strokeWidth="8"
-                                  fill="transparent"
-                                  className="text-slate-200"
-                                />
-                                <circle
-                                  cx="50"
-                                  cy="50"
-                                  r="40"
-                                  stroke="currentColor"
-                                  strokeWidth="8"
-                                  fill="transparent"
-                                  strokeDasharray={`${2 * Math.PI * 40}`}
-                                  strokeDashoffset={`${
-                                    2 *
-                                    Math.PI *
-                                    40 *
-                                    (1 - calculatedProgress.progress / 100)
-                                  }`}
-                                  className="text-slate-800 transition-all duration-1000 ease-out"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                            </div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-2xl font-bold text-slate-800">
-                                {calculatedProgress.progress}%
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-slate-600 mt-3 font-medium">
-                            Overall Completion
-                          </p>
-                        </div>
-
-                        {/* Task Breakdown */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
-                            <div className="text-2xl font-bold text-slate-800">
-                              {calculatedProgress.completedTasks}
-                            </div>
-                            <div className="text-sm text-slate-600 font-medium">
-                              Completed
-                            </div>
-                          </div>
-                          <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
-                            <div className="text-2xl font-bold text-slate-800">
-                              {calculatedProgress.totalTasks -
-                                calculatedProgress.completedTasks}
-                            </div>
-                            <div className="text-sm text-slate-600 font-medium">
-                              Remaining
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Phase Progress */}
-                        {calculatedProgress.phases.length > 0 && (
-                          <div>
-                            <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                              <div className="h-6 w-6 bg-slate-100 rounded-md flex items-center justify-center">
-                                <svg
-                                  className="w-4 h-4 text-slate-600"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
+                            {currentProject.estimated_costing && (
+                              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <p className="text-sm text-slate-700 font-medium">
+                                  Estimated Cost
+                                </p>
+                                <p className="text-lg font-bold text-slate-900">
+                                  {formatCurrency(currentProject.estimated_costing)}
+                                </p>
                               </div>
-                              Phase Progress
-                            </h4>
-                            <div className="space-y-3">
-                              {calculatedProgress.phases.map((phase, index) => (
-                                <div
-                                  key={index}
-                                  className="bg-slate-50 p-3 rounded-lg border border-slate-200"
-                                >
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-semibold text-slate-900 truncate">
-                                      {phase.name}
-                                    </span>
-                                    <span className="text-sm font-bold text-slate-700 ml-2">
-                                      {phase.progress}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-slate-200 rounded-full h-2">
-                                    <div
-                                      className="bg-slate-600 h-2 rounded-full transition-all duration-500"
-                                      style={{ width: `${phase.progress}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                            )}
+                            {currentProject.total_sales_amount && (
+                              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                                <p className="text-sm text-emerald-700 font-medium">
+                                  Total Sales
+                                </p>
+                                <p className="text-lg font-bold text-emerald-900">
+                                  {formatCurrency(currentProject.total_sales_amount)}
+                                </p>
+                              </div>
+                            )}
+                            {currentProject.total_costing_amount && (
+                              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p className="text-sm text-blue-700 font-medium">
+                                  Total Cost
+                                </p>
+                                <p className="text-lg font-bold text-blue-900">
+                                  {formatCurrency(currentProject.total_costing_amount)}
+                                </p>
+                              </div>
+                            )}
+                            {currentProject.total_billable_amount && (
+                              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                <p className="text-sm text-purple-700 font-medium">
+                                  Billable Amount
+                                </p>
+                                <p className="text-lg font-bold text-purple-900">
+                                  {formatCurrency(currentProject.total_billable_amount)}
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
+                      )}
+
+                      {/* Progress Section */}
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                          Project Progress
+                        </label>
+                        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-lg font-semibold text-slate-900">
+                              Overall Completion
+                            </span>
+                            <span className="text-2xl font-bold text-slate-800">
+                              {projectProgress}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-4">
+                            <div
+                              className="bg-slate-600 h-4 rounded-full transition-all duration-500"
+                              style={{ width: `${projectProgress}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Project Files Section */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                  <div className="px-8 py-6 border-b border-slate-200">
-                    <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                      <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                        <svg
-                          className="h-6 w-6 text-slate-600"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </div>
-                      Project Files
-                    </h3>
-                  </div>
-                  <div className="p-8">
-                    <FileAttachments
-                      doctype="Project"
-                      docname={project.name}
-                      title=""
-                      allowUpload={true}
-                      allowDelete={true}
-                    />
+                  {/* Project Files Section */}
+                  <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                    <div className="px-8 py-6 border-b border-slate-200">
+                      <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                        <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                          <svg
+                            className="h-6 w-6 text-slate-600"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        Project Files
+                      </h3>
+                    </div>
+                    <div className="p-8">
+                      <FileAttachments
+                        doctype="Project"
+                        docname={project.name}
+                        title=""
+                        allowUpload={true}
+                        allowDelete={true}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

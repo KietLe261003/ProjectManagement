@@ -1,6 +1,40 @@
 import frappe
 from frappe import _
 
+@frappe.whitelist()
+def get_current_user_roles():
+    """Get roles of current user - accessible by any authenticated user"""
+    try:
+        user = frappe.session.user
+        if not user or user == "Guest":
+            return {
+                "success": False,
+                "message": "User not authenticated"
+            }
+            
+        user_roles = frappe.get_roles(user)
+        
+        result = {
+            "success": True,
+            "user": user,
+            "roles": user_roles,
+            "has_projects_manager": "Projects Manager" in user_roles,
+            "is_administrator": user == "Administrator" or "Administrator" in user_roles
+        }
+        
+        frappe.logger().info(f"User roles retrieved for {user}: {result}")
+        return result
+        
+    except Exception as e:
+        error_msg = str(e)
+        frappe.log_error(frappe.get_traceback(), "Get User Roles Error")
+        frappe.logger().error(f"Error getting user roles: {error_msg}")
+        return {
+            "success": False,
+            "message": error_msg,
+            "error_type": type(e).__name__
+        }
+
 @frappe.whitelist(allow_guest=True)
 def custom_login(usr, pwd):
     """Custom login with role-based redirect"""
