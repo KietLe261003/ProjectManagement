@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useFrappeCreateDoc, useFrappeGetDoc } from 'frappe-react-sdk';
+import { useFrappeCreateDoc, useFrappeGetDoc, useFrappeAuth } from 'frappe-react-sdk';
 import { useProjectUsers } from '@/services/projectUsersService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ export const CreateStandaloneTask: React.FC<CreateStandaloneTaskProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { createDoc, loading } = useFrappeCreateDoc();
+  const { currentUser } = useFrappeAuth();
   
   // Fetch project users for assignment dropdown
   const { data: projectUsers, isLoading: usersLoading } = useProjectUsers(projectName);
@@ -107,6 +108,7 @@ export const CreateStandaloneTask: React.FC<CreateStandaloneTaskProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Step 1: Create the task (without assign_to field)
       const taskData = {
         subject: formData.subject,
         description: formData.description,
@@ -119,15 +121,38 @@ export const CreateStandaloneTask: React.FC<CreateStandaloneTaskProps> = ({
         exp_end_date: formData.exp_end_date || null,
         project: projectName,
         is_template: 0,
-        progress: 0,
-        assign_to: formData.assign_to || undefined
+        progress: 0
       };
 
-      await createDoc('Task', taskData);
+      const createdTask = await createDoc('Task', taskData);
+
+      // Step 2: Create ToDo if assign_to is provided
+      let todoCreated = null;
+      if (formData.assign_to && createdTask) {
+        try {
+          todoCreated = await createDoc('ToDo', {
+            allocated_to: formData.assign_to,
+            assigned_by: currentUser || '',
+            description: `Task: ${formData.subject}`,
+            reference_type: 'Task',
+            reference_name: createdTask.name,
+            status: 'Open',
+            priority: formData.priority,
+            date: new Date().toISOString().split('T')[0]
+          });
+          console.log('ToDo created for assignment:', todoCreated);
+        } catch (todoError) {
+          console.error('Error creating ToDo for assignment:', todoError);
+          // Don't fail the entire operation if ToDo creation fails
+          toast.warning("Task created successfully, but assignment failed", {
+            description: "The task was created but could not be assigned. You can assign it manually later.",
+          });
+        }
+      }
 
       // Show success message
       let successMessage = `Task "${formData.subject}" has been created successfully.`;
-      if (formData.assign_to) {
+      if (todoCreated && formData.assign_to) {
         successMessage += ` Task has been assigned to ${formData.assign_to}.`;
       }
       

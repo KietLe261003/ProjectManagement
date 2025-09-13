@@ -2,6 +2,7 @@ import React from 'react';
 import { useFrappeGetDocList, useFrappeGetDoc, useFrappeCreateDoc, useFrappeUpdateDoc, useFrappePostCall, useFrappeAuth } from 'frappe-react-sdk';
 import type { Project } from '@/types/Projects/Project';
 import type { ProjectUser } from '@/types/Projects/ProjectUser';
+import { useUserRoles } from '@/hooks/useUserRoles';
 
 // Types for service responses
 export interface ProjectServiceResponse<T> {
@@ -92,7 +93,18 @@ export class ProjectService {
   // Get projects for current user (owner or member)
   static useUserProjects(): ProjectServiceResponse<Project[]> {
     const { currentUser } = useFrappeAuth();
-
+    const { hasProjectsManager, isLoading: rolesLoading, error: rolesError } = useUserRoles();
+    
+    // Fallback logic if role checking fails
+    const isProjectsManagerFallback = React.useMemo(() => {
+      if (rolesError) {
+        console.warn('Role checking failed, using fallback logic:', rolesError);
+        // If role checking fails, fall back to Administrator check
+        return currentUser === 'Administrator';
+      }
+      return hasProjectsManager;
+    }, [hasProjectsManager, rolesError, currentUser]);
+    
     // Fetch owned projects
     const { data: ownedProjects, isLoading: loadingOwned, error: errorOwned, mutate: mutateOwned } = useFrappeGetDocList('Project', {
       fields: ProjectService.PROJECT_FIELDS,
@@ -172,6 +184,11 @@ export class ProjectService {
         });
       };
 
+      // If user is Projects Manager, return all projects
+      if (isProjectsManagerFallback && allProjects) {
+        return deduplicateProjects(allProjects);
+      }
+
       let combinedProjects: any[] = [];
 
       // Gom ownedProjects
@@ -191,7 +208,7 @@ export class ProjectService {
       // Loại bỏ trùng lặp
       return deduplicateProjects(combinedProjects);
 
-    }, [ownedProjects, allProjects, currentUser]);
+    }, [ownedProjects, allProjects, currentUser, isProjectsManagerFallback]);
 
     // Combined mutate function to refresh both queries
     const mutate = React.useCallback(async () => {
@@ -206,7 +223,7 @@ export class ProjectService {
 
     return {
       data: projects,
-      isLoading: loadingOwned || loadingAll,
+      isLoading: loadingOwned || loadingAll || rolesLoading,
       error: errorOwned && errorAll ? (errorOwned || errorAll) : null,
       mutate
     };
